@@ -1,70 +1,87 @@
-Web Đánh Cờ & Học Cờ Online (AI Stockfish)
-Giới thiệu
+# Web Đánh Cờ & Học Cờ Online (AI Stockfish)
 
-Web này cho phép bạn chơi cờ vua trực tuyến với người khác hoặc với AI Stockfish.
-Bạn có thể học cờ qua bài học, video, chiến thuật, giải puzzle và phân tích ván cờ bằng Stockfish.
-Dự án chỉ dùng Stockfish có sẵn, không huấn luyện AI mới.
+## Giới thiệu
 
-Chức năng chính
+Web này cho phép người dùng:
 
-Người chơi có thể:
+* Chơi cờ vua trực tuyến với người khác hoặc với AI Stockfish
+* Học cờ qua bài học, video và chiến thuật
+* Giải puzzle và bài tập cờ theo độ khó
+* Phân tích ván cờ bằng Stockfish từ PGN hoặc FEN
 
-Chơi cờ online realtime, tạo phòng hoặc ghép ngẫu nhiên
+**Lưu ý:** dự án chỉ sử dụng Stockfish có sẵn, không huấn luyện AI mới.
 
-Chơi với AI Stockfish ở nhiều mức độ
+---
 
-Xem bài học và video hướng dẫn
+## Chức năng chính
 
-Giải puzzle: mate in 1, mate in 2, fork, pin…
+**Người chơi có thể:**
 
-Phân tích ván cờ: gợi ý nước đi, đánh giá vị trí
+* Chơi cờ online realtime, tạo phòng hoặc ghép ngẫu nhiên
+* Chơi với AI Stockfish với nhiều mức độ khác nhau
+* Xem bài học, video, hướng dẫn chiến thuật
+* Giải puzzle: mate in 1, mate in 2, fork, pin…
+* Phân tích ván cờ: gợi ý nước đi, đánh giá vị trí
+* Lưu lịch sử ván đấu, Elo và thông tin cá nhân
+* Chat trực tiếp trong phòng cờ
 
-Lưu lịch sử ván đấu, Elo và thông tin cá nhân
+**Quản trị viên có thể:**
 
-Chat trực tiếp trong phòng cờ
+* Quản lý người dùng
+* Thêm, sửa, xoá puzzle
+* Quản lý bài học
+* Theo dõi thống kê trận đấu
 
-Quản trị viên có thể:
+---
 
-Quản lý người dùng
+## Công nghệ sử dụng
 
-Thêm, sửa, xoá puzzle
+**Frontend:** ReactJS / Next.js, Chessboard.jsx hoặc Chessground, Stockfish WebAssembly, Socket.IO client, TailwindCSS
 
-Quản lý bài học
+**Backend:** Node.js (Express hoặc NestJS), Socket.IO server, Chess.js, Stockfish, REST API
 
-Theo dõi thống kê trận đấu
+**Database:** MongoDB hoặc PostgreSQL
 
-Công nghệ sử dụng
+**DevOps:** Docker, AWS ECS + ECR, GitHub Actions CI/CD, AWS S3 + CloudFront
 
-Frontend: ReactJS / Next.js, Chessboard.jsx hoặc Chessground, Stockfish WebAssembly, Socket.IO client, TailwindCSS.
-Backend: Node.js (Express/NestJS), Socket.IO server, Chess.js, Stockfish, REST API.
-Database: MongoDB hoặc PostgreSQL.
-DevOps: Docker, AWS ECS + ECR, GitHub Actions CI/CD, AWS S3 + CloudFront.
+---
 
-Ngôn ngữ lập trình
+## Ngôn ngữ lập trình
 
-Frontend: JavaScript / TypeScript
-Backend: JavaScript / TypeScript
-AI Engine: C++ (Stockfish) hoặc JS (WASM)
-Database: Mongo Query hoặc SQL
-CI/CD: YAML
-Container: Dockerfile
+* Frontend: JavaScript / TypeScript
+* Backend: JavaScript / TypeScript
+* AI Engine: C++ (Stockfish) hoặc JavaScript (WASM)
+* Database: Mongo Query hoặc SQL
+* CI/CD: YAML
+* Container: Dockerfile
 
-Thuật toán chính
+---
 
-Kiểm tra nước đi hợp lệ bằng chess.js, cập nhật FEN và lịch sử nước đi
+## Thuật toán chính
 
-AI Stockfish sử dụng minimax + alpha-beta, NNUE, iterative deepening
+* Kiểm tra nước đi hợp lệ bằng Chess.js, cập nhật FEN và lịch sử nước đi
+* AI Stockfish sử dụng Minimax + Alpha-Beta, NNUE, Iterative Deepening
+* Gửi FEN đến Stockfish để nhận nước đi tốt nhất và điểm đánh giá
+* Phân tích ván: nhập PGN → Stockfish → nhận nước tốt nhất và đánh giá
+* Puzzle: chọn theo Elo và độ khó, kiểm tra nước đi đúng/sai bằng Chess.js
 
-Gọi Stockfish bằng FEN để nhận bestmove và điểm đánh giá
+---
 
-Phân tích ván: nhập PGN → Stockfish → nhận nước tốt nhất và điểm đánh giá
+## Luồng hoạt động
 
-Puzzle: chọn theo Elo và độ khó, kiểm tra nước đi đúng/sai bằng chess.js
+**Chơi với AI:** người chơi đi → board cập nhật → gửi FEN → Stockfish → nhận nước AI → render
 
-Luồng hoạt động
+**Chơi online:** Player A đi → Server → Player B nhận (realtime bằng Socket.IO)
 
-Chơi với AI: người chơi đi → cập nhật board → gửi FEN → Stockfish → nhận nước AI → render
+**Phân tích ván:** nhập PGN → Backend → Stockfish → trả kết quả → hiển thị cho người dùng
 
-Chơi online: Player A đi → Server → Player B nhận (realtime bằng Socket.IO)
+---
 
-Phân tích ván: nhập PGN → Backend → Stockfish → trả kết quả → hiển thị
+## Kết luận
+
+Web cung cấp:
+
+* Chơi cờ trực tuyến realtime với người khác hoặc AI
+* Học cờ, giải puzzle và phân tích ván cờ bằng Stockfish
+* Kiến trúc Frontend React + Backend Node + Socket.IO
+* Dễ triển khai, không cần huấn luyện AI mới
