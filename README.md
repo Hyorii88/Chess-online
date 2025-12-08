@@ -42,8 +42,6 @@ Web này cho phép người dùng:
 
 **Database:** MongoDB hoặc PostgreSQL
 
-**DevOps:** Docker, AWS ECS + ECR, GitHub Actions CI/CD, AWS S3 + CloudFront
-
 ---
 
 ## Ngôn ngữ lập trình
@@ -52,8 +50,6 @@ Web này cho phép người dùng:
 * Backend: JavaScript / TypeScript
 * AI Engine: C++ (Stockfish) hoặc JavaScript (WASM)
 * Database: Mongo Query hoặc SQL
-* CI/CD: YAML
-* Container: Dockerfile
 
 ---
 
