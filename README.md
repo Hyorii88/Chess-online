@@ -84,4 +84,3 @@ Web cung cấp:
 * Chơi cờ trực tuyến realtime với người khác hoặc AI
 * Học cờ, giải puzzle và phân tích ván cờ bằng Stockfish
 * Kiến trúc Frontend React + Backend Node + Socket.IO
-* Dễ triển khai, không cần huấn luyện AI mới
