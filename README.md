@@ -9,7 +9,6 @@ Web này cho phép người dùng:
 * Giải puzzle và bài tập cờ theo độ khó
 * Phân tích ván cờ bằng Stockfish từ PGN hoặc FEN
 
-**Lưu ý:** dự án chỉ sử dụng Stockfish có sẵn, không huấn luyện AI mới.
 
 ---
 
