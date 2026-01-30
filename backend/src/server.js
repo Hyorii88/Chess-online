@@ -11,6 +11,7 @@ import puzzleRoutes from './routes/puzzle.js';
 import lessonRoutes from './routes/lesson.js';
 import analysisRoutes from './routes/analysis.js';
 import chatbotRoutes from './routes/chatbot.js';
+import leaderboardRoutes from './routes/leaderboardRoutes.js';
 import { initializeGameSocket } from './socket/gameSocket.js';
 import { initializeMatchmakingSocket } from './socket/matchmakingSocket.js';
 
@@ -53,6 +54,9 @@ app.use('/api/puzzles', puzzleRoutes);
 app.use('/api/lessons', lessonRoutes);
 app.use('/api/analysis', analysisRoutes);
 app.use('/api/chatbot', chatbotRoutes);
+app.use('/api/leaderboard', leaderboardRoutes);
+
+// Health check
 
 // Health check
 app.get('/api/health', (req, res) => {

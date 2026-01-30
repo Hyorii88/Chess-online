@@ -9,7 +9,8 @@ import Navbar from '@/components/Navbar';
 import { io, Socket } from 'socket.io-client';
 import { analysisAPI } from '@/lib/api';
 import toast from 'react-hot-toast';
-import { FaFlag, FaHandshake, FaComments, FaRobot, FaUserPlus } from 'react-icons/fa';
+import { FaFlag, FaHandshake, FaComments, FaRobot, FaUserPlus, FaTrophy, FaMedal, FaChartLine } from 'react-icons/fa';
+import Confetti from 'react-confetti';
 
 export default function GamePage({ params }: { params: Promise<{ id: string }> }) {
     const { id: gameId } = use(params);
@@ -27,7 +28,17 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
     const [chatMessages, setChatMessages] = useState<any[]>([]);
     const [chatInput, setChatInput] = useState('');
     const [thinking, setThinking] = useState(false);
+    // State for rating updates
+    const [ratingChange, setRatingChange] = useState<number | null>(null);
+    const [newRating, setNewRating] = useState<number | null>(null);
     const [moveHistory, setMoveHistory] = useState<string[]>([]);
+    const [gameStartTime, setGameStartTime] = useState<Date>(new Date());
+    const [showConfetti, setShowConfetti] = useState(false);
+
+    // Game over state - explicit state instead of relying on game.isGameOver()
+    const [isGameOver, setIsGameOver] = useState(false);
+    const [gameWinner, setGameWinner] = useState<string | null>(null); // 'white', 'black', or 'draw'
+    const [gameEndReason, setGameEndReason] = useState<string | null>(null);
 
     useEffect(() => {
         if (!isAuthenticated) {
@@ -51,7 +62,13 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
         });
 
         newSocket.on('playerJoined', (data) => {
+            console.log('🎨 PLAYER JOINED EVENT:', {
+                assignedColor: data.color,
+                type: typeof data.color
+            });
             setPlayerColor(data.color);
+            console.log('✅ Player color SET TO:', data.color);
+
             const newGame = new Chess();
 
             try {
@@ -79,6 +96,13 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
         });
 
         newSocket.on('moveMade', (data) => {
+            console.log('📨 moveMade event received:', {
+                isGameOver: data.isGameOver,
+                result: data.result,
+                endReason: data.endReason,
+                fen: data.fen
+            });
+
             const newGame = new Chess();
             try {
                 if (data.pgn) {
@@ -94,10 +118,65 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
             setGame(newGame);
             setMoveHistory(newGame.history());
 
+            // Handle game over from backend event
+            if (data.isGameOver && data.result && data.endReason) {
+                console.log('🔥 GAME OVER - Backend says:', {
+                    result: data.result,
+                    endReason: data.endReason,
+                    isWinner: data.isWinner,
+                    myColor: playerColor
+                });
+
+                // Set game over state
+                setIsGameOver(true);
+                setGameWinner(data.result);
+                setGameEndReason(data.endReason);
+
+                // Auto-redirect to lobby after 10 seconds
+                setTimeout(() => {
+                    router.push('/lobby');
+                }, 10000);
+
+                // Show notifications
+                if (data.endReason === 'checkmate') {
+                    // Use backend's isWinner flag - NO local comparison needed!
+                    if (data.isWinner === true) {
+                        console.log('✅ I WON! Showing winner toast');
+                        toast.success('🎉 Checkmate! You won!', { duration: 5000 });
+                        setShowConfetti(true);
+                        setTimeout(() => setShowConfetti(false), 5000);
+                    } else if (data.isWinner === false) {
+                        console.log('❌ I LOST! Showing loser toast');
+                        toast.error('💔 Checkmate! You lost.', { duration: 5000 });
+                    } else {
+                        console.warn('⚠️ isWinner is undefined - this is a draw or spectator');
+                    }
+                } else if (data.endReason === 'stalemate') {
+                    toast('⚖️ Stalemate - Game drawn', { duration: 4000 });
+                } else {
+                    toast('⚖️ Game drawn', { duration: 4000 });
+                }
+            }
+
             // If it's AI mode and it's not our turn, get AI move
             if (mode === 'ai' && newGame.turn() !== playerColor[0]) {
                 makeAIMove(newGame);
             }
+        });
+
+        // Add rating update listener
+        newSocket.on('ratingUpdate', (data) => {
+            console.log('📉 RATING UPDATE:', data);
+            setRatingChange(data.change);
+            setNewRating(data.newRating);
+
+            const changeText = data.change > 0 ? `+${data.change}` : `${data.change}`;
+            const color = data.change > 0 ? 'success' : 'error';
+
+            // Show toast
+            toast[color](`Rating: ${data.oldRating} → ${data.newRating} (${changeText})`, {
+                duration: 6000
+            });
         });
 
         newSocket.on('chatMessage', (data) => {
@@ -261,14 +340,8 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
                 makeAIMove(gameCopy);
             }
 
-            // Check for game over
-            if (gameCopy.isGameOver()) {
-                if (gameCopy.isCheckmate()) {
-                    toast.success('Checkmate!');
-                } else if (gameCopy.isDraw()) {
-                    toast.success('Game drawn');
-                }
-            }
+            // Note: Game over logic is handled by backend moveMade event
+            // Don't check isGameOver here to avoid duplicate notifications
 
             return;
         } catch (error) {
@@ -318,14 +391,8 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
                 makeAIMove(gameCopy);
             }
 
-            // Check for game over
-            if (gameCopy.isGameOver()) {
-                if (gameCopy.isCheckmate()) {
-                    toast.success('Checkmate!');
-                } else if (gameCopy.isDraw()) {
-                    toast.success('Game drawn');
-                }
-            }
+            // Note: Game over logic is handled by backend moveMade event
+            // Don't check isGameOver here to avoid duplicate notifications
 
             return true;
         } catch (error) {
@@ -546,34 +613,146 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
                     </div>
                 </div>
             </div>
-            {/* Game Over Modal */}
-            {game.isGameOver() && (
-                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-                    <div className="card max-w-md w-full text-center p-8 animate-scale-up">
-                        <h2 className="text-4xl font-bold mb-4 gradient-text">Game Over</h2>
-                        <div className="text-2xl mb-6">
-                            {game.isCheckmate() ? (
-                                <span className={game.turn() === 'w' ? 'text-white' : 'text-gray-400'}>
-                                    {game.turn() === 'w' ? 'Black' : 'White'} won by checkmate!
-                                </span>
-                            ) : (
-                                <span className="text-gray-400">Draw</span>
-                            )}
-                        </div>
+            {/* Confetti Effect */}
+            {showConfetti && game.isCheckmate() && (
+                <Confetti
+                    width={typeof window !== 'undefined' ? window.innerWidth : 300}
+                    height={typeof window !== 'undefined' ? window.innerHeight : 200}
+                    recycle={false}
+                    numberOfPieces={500}
+                    colors={['#FFD700', '#FFA500', '#FF6347', '#4169E1', '#32CD32']}
+                />
+            )}
 
-                        <div className="flex gap-4 justify-center">
-                            <button
-                                onClick={() => router.push('/lobby')}
-                                className="btn-secondary"
-                            >
-                                Back to Lobby
-                            </button>
-                            <button
-                                onClick={() => window.location.reload()}
-                                className="btn-primary"
-                            >
-                                Rematch
-                            </button>
+            {/* Enhanced Game Over Modal */}
+            {isGameOver && (
+                <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="card max-w-2xl w-full text-center p-8 md:p-12 animate-scale-up relative overflow-hidden">
+                        {/* Decorative Background */}
+                        <div className="absolute inset-0 bg-gradient-to-br from-primary-500/10 via-transparent to-purple-500/10 pointer-events-none"></div>
+
+                        {/* Content */}
+                        <div className="relative z-10">
+                            {/* Trophy Icon */}
+                            {game.isCheckmate() && (
+                                <div className="flex justify-center mb-6">
+                                    <div className="relative">
+                                        <FaTrophy className="text-8xl text-yellow-400 drop-shadow-2xl animate-bounce" />
+                                        <div className="absolute inset-0 animate-ping">
+                                            <FaTrophy className="text-8xl text-yellow-400 opacity-20" />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Title */}
+                            <h2 className="text-5xl md:text-6xl font-bold mb-4">
+                                {game.isCheckmate() ? (
+                                    <span className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 bg-clip-text text-transparent">
+                                        Victory!
+                                    </span>
+                                ) : (
+                                    <span className="gradient-text">Draw</span>
+                                )}
+                            </h2>
+
+                            {/* Winner Information */}
+                            <div className="mb-8">
+                                {game.isCheckmate() ? (
+                                    <div className="space-y-4">
+                                        <div className="flex items-center justify-center gap-4">
+                                            <img
+                                                src={
+                                                    (game.turn() === 'w' ? (playerColor === 'black' ? user?.avatar : opponent?.avatar || mode === 'ai' ? 'https://api.dicebear.com/7.x/bottts/svg?seed=ai' : user?.avatar)
+                                                        : (playerColor === 'white' ? user?.avatar : opponent?.avatar || mode === 'ai' ? 'https://api.dicebear.com/7.x/bottts/svg?seed=ai' : user?.avatar))
+                                                }
+                                                alt="Winner"
+                                                className="w-20 h-20 rounded-full border-4 border-yellow-400 shadow-xl"
+                                            />
+                                            <div className="text-left">
+                                                <div className="text-3xl font-bold text-white">
+                                                    {game.turn() === 'w' ? (
+                                                        playerColor === 'black' ? user?.username : (mode === 'ai' ? `Stockfish AI (Lvl ${difficulty})` : opponent?.username || 'Black')
+                                                    ) : (
+                                                        playerColor === 'white' ? user?.username : (mode === 'ai' ? `Stockfish AI (Lvl ${difficulty})` : opponent?.username || 'White')
+                                                    )}
+                                                </div>
+                                                <div className="text-xl text-yellow-400 flex items-center gap-2">
+                                                    <FaMedal /> Won by Checkmate!
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : game.isStalemate() ? (
+                                    <p className="text-2xl text-gray-300">Stalemate - Game Drawn</p>
+                                ) : game.isThreefoldRepetition() ? (
+                                    <p className="text-2xl text-gray-300">Draw by Threefold Repetition</p>
+                                ) : game.isInsufficientMaterial() ? (
+                                    <p className="text-2xl text-gray-300">Draw by Insufficient Material</p>
+                                ) : (
+                                    <p className="text-2xl text-gray-300">Game Drawn</p>
+                                )}
+                            </div>
+
+                            {/* Game Statistics */}
+                            <div className="grid grid-cols-3 gap-4 mb-8 bg-dark-800/50 rounded-xl p-6 backdrop-blur-sm">
+                                <div className="text-center">
+                                    <div className="text-3xl font-bold text-primary-400">{moveHistory.length}</div>
+                                    <div className="text-sm text-gray-400 mt-1">Total Moves</div>
+                                </div>
+                                <div className="text-center border-x border-dark-600">
+                                    <div className="text-3xl font-bold text-purple-400">
+                                        {Math.floor((new Date().getTime() - gameStartTime.getTime()) / 60000)}m
+                                    </div>
+                                    <div className="text-sm text-gray-400 mt-1">Duration</div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-3xl font-bold text-green-400">
+                                        {game.isCheckmate() ? '+12' : '+6'}
+                                    </div>
+                                    <div className="text-sm text-gray-400 mt-1">Rating Points</div>
+                                </div>
+                            </div>
+
+                            {/* Rating Change Display */}
+                            {ratingChange !== null && (
+                                <div className="mt-6 mb-6 p-4 bg-white/5 rounded-xl border border-white/10 backdrop-blur-md animate-fade-in-up" style={{ animationDelay: '200ms' }}>
+                                    <div className="text-gray-400 text-sm font-medium uppercase tracking-wider mb-2">Rating Change</div>
+                                    <div className="flex items-center justify-center gap-4">
+                                        <div className={`text-4xl font-black ${ratingChange > 0 ? 'text-green-400 drop-shadow-glow-green' : 'text-red-400 drop-shadow-glow-red'}`}>
+                                            {ratingChange > 0 ? '+' : ''}{ratingChange}
+                                        </div>
+                                        <div className="h-10 w-px bg-white/20"></div>
+                                        <div className="flex flex-col items-start">
+                                            <div className="text-xs text-gray-500">New Rating</div>
+                                            <div className="text-xl font-bold text-white">{newRating}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Action Buttons */}
+                            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                                <button
+                                    onClick={() => router.push('/analyze?pgn=' + encodeURIComponent(game.pgn()))}
+                                    className="btn-secondary flex items-center justify-center gap-2"
+                                >
+                                    <FaChartLine />
+                                    Analyze Game
+                                </button>
+                                <button
+                                    onClick={() => router.push('/lobby')}
+                                    className="btn-secondary"
+                                >
+                                    Back to Lobby
+                                </button>
+                                <button
+                                    onClick={() => window.location.reload()}
+                                    className="btn-primary"
+                                >
+                                    Play Again
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

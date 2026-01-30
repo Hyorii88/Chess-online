@@ -18,7 +18,7 @@ export default function CoachPage() {
         {
             id: 'welcome',
             role: 'assistant',
-            content: "Chào bạn! Tôi là Trợ lý Cờ vua AI cao cấp. ♟️\nTôi có thể giúp bạn phân tích ván đấu, gợi ý khai cuộc, hay giải đáp mọi thắc mắc về chiến thuật. Bạn muốn bắt đầu từ đâu?",
+            content: "Chào bạn! Tôi là Chess Bot. ♟️\nTôi có thể giúp bạn phân tích ván đấu, gợi ý khai cuộc, hay giải đáp mọi thắc mắc về chiến thuật. Bạn muốn bắt đầu từ đâu?",
             timestamp: new Date()
         }
     ]);
@@ -102,7 +102,7 @@ export default function CoachPage() {
                 <div className="text-center mb-0 opacity-80 hover:opacity-100 transition-opacity">
                     <div className="inline-flex items-center justify-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md shadow-sm mb-4">
                         <FaMagic className="text-purple-400 text-xs" />
-                        <span className="text-xs font-semibold tracking-wide text-purple-100">AI Coach Pro</span>
+                        <span className="text-xs font-semibold tracking-wide text-purple-100">Chess Bot</span>
                     </div>
                 </div>
 
@@ -126,10 +126,10 @@ export default function CoachPage() {
 
                                     {/* Bubble / Text Content */}
                                     <div className={`py-2 px-3 md:px-0 whitespace-pre-wrap leading-relaxed ${isUser
-                                            ? 'bg-gradient-to-br from-indigo-600 to-purple-600 text-white rounded-2xl rounded-tr-none px-5 py-3 shadow-lg'
-                                            : 'bg-transparent text-gray-100 pl-2' // Completely transparent for AI
+                                        ? 'bg-gradient-to-br from-indigo-600 to-purple-600 text-white rounded-2xl rounded-tr-none px-5 py-3 shadow-lg'
+                                        : 'bg-transparent !text-white pl-2' // Completely transparent for AI
                                         }`}>
-                                        <div className={`text-[15px] md:text-[16px] ${!isUser ? 'font-light tracking-wide' : ''}`}>
+                                        <div className={`text-[15px] md:text-[16px] text-white ${!isUser ? 'font-light tracking-wide' : ''}`}>
                                             {msg.content}
                                         </div>
                                     </div>
@@ -176,7 +176,8 @@ export default function CoachPage() {
                                 onChange={(e) => setInput(e.target.value)}
                                 onKeyDown={handleKeyDown}
                                 placeholder="Hỏi tôi bất cứ điều gì..."
-                                className="flex-1 bg-transparent border-none px-6 py-4 text-white focus:outline-none placeholder-slate-500 text-base"
+                                className="flex-1 bg-transparent border-none px-6 py-4 !text-white focus:outline-none placeholder-slate-500 text-base"
+                                style={{ color: '#ffffff' }}
                                 autoFocus
                                 disabled={isTyping}
                             />

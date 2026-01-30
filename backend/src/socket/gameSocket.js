@@ -138,6 +138,23 @@ export const initializeGameSocket = (io) => {
                 return;
             }
 
+            // SECURITY: Validate player identity
+            const player = room.players.find(p => p.socketId === socket.id);
+            if (!player) {
+                socket.emit('invalidMove', { error: 'You are not a player in this game' });
+                console.warn(`⚠️ Non-player attempted move in ${roomId}`);
+                return;
+            }
+
+            const currentTurn = room.chess.turn(); // 'w' or 'b'
+            if (player.color[0] !== currentTurn) {
+                socket.emit('invalidMove', {
+                    error: `Not your turn! It's ${currentTurn === 'w' ? "White" : "Black"}'s turn`
+                });
+                console.warn(`⚠️ ${player.username} (${player.color}) attempted to move on ${currentTurn === 'w' ? 'White' : 'Black'}'s turn`);
+                return;
+            }
+
             console.log(`♟️ Move attempt in ${roomId}:`, move);
             console.log(`   Current FEN: ${room.chess.fen()}`);
 
@@ -147,9 +164,20 @@ export const initializeGameSocket = (io) => {
                     const fen = room.chess.fen();
                     const isGameOver = room.chess.isGameOver();
 
+                    // DEBUG: Log game state after every move
+                    console.log(`\n🔍 After move ${result.san}:`);
+                    console.log(`   FEN: ${fen}`);
+                    console.log(`   isGameOver: ${isGameOver}`);
+                    console.log(`   isCheckmate: ${room.chess.isCheckmate()}`);
+                    console.log(`   isStalemate: ${room.chess.isStalemate()}`);
+                    console.log(`   isDraw: ${room.chess.isDraw()}`);
+                    console.log(`   isCheck: ${room.chess.isCheck()}`);
+                    console.log(`   turn: ${room.chess.turn()}`);
+
                     let gameResult = null;
+                    let endReason = null; // Moved outside so it's accessible below
+
                     if (isGameOver) {
-                        let endReason = null;
                         if (room.chess.isCheckmate()) {
                             gameResult = room.chess.turn() === 'w' ? 'black' : 'white';
                             endReason = 'checkmate';
@@ -169,20 +197,43 @@ export const initializeGameSocket = (io) => {
 
                         console.log(`🏁 Game Over in ${roomId}. Result: ${gameResult}, Reason: ${endReason}`);
 
-
+                    } else {
+                        console.log(`✅ Game continues`);
                     }
 
-                    // Broadcast move to all players in room
-                    gameNamespace.to(roomId).emit('moveMade', {
-                        move: result,
-                        fen: fen,
-                        pgn: room.chess.pgn(),
-                        isGameOver,
-                        result: gameResult,
-                        endReason: isGameOver ? (room.chess.isCheckmate() ? 'checkmate' : 'draw') : null
-                    });
+                    // Send move update to ALL players with PERSONALIZED data
+                    if (isGameOver && gameResult && gameResult !== 'draw') {
+                        // Game over with a winner - send personalized data to each player
+                        room.players.forEach(player => {
+                            const isWinner = player.color === gameResult;
+
+                            gameNamespace.to(player.socketId).emit('moveMade', {
+                                move: result,
+                                fen: fen,
+                                pgn: room.chess.pgn(),
+                                isGameOver,
+                                result: gameResult,
+                                endReason: endReason,
+                                isWinner: isWinner  // Personalized: true for winner, false for loser
+                            });
+
+                            console.log(`📤 Sent to ${player.username} (${player.color}): isWinner=${isWinner}`);
+                        });
+                    } else {
+                        // Normal move or draw - broadcast same data to everyone
+                        gameNamespace.to(roomId).emit('moveMade', {
+                            move: result,
+                            fen: fen,
+                            pgn: room.chess.pgn(),
+                            isGameOver,
+                            result: gameResult,
+                            endReason: endReason
+                        });
+                    }
+
                     console.log(`✅ Move successful: ${result.san}. New FEN: ${fen}`);
 
+                    // Save move to database (Persistence)
                     // Save move to database (Persistence)
                     import('../models/Game.js').then(async ({ default: Game }) => {
                         try {
@@ -196,19 +247,96 @@ export const initializeGameSocket = (io) => {
                                 timestamp: new Date()
                             };
 
-                            await Game.findByIdAndUpdate(roomId, {
+                            const updateData = {
                                 $push: { moves: moveData },
                                 $set: {
                                     fen: fen,
-                                    pgn: room.chess.pgn(),
-                                    // Update result ONLY if game is over (to avoid overwriting 'ongoing')
-                                    ...(isGameOver && {
-                                        result: gameResult,
-                                        endReason: isGameOver ? (room.chess.isCheckmate() ? 'checkmate' : 'draw') : null,
-                                        completedAt: new Date()
-                                    })
+                                    pgn: room.chess.pgn()
                                 }
-                            });
+                            };
+
+                            // If game is over, update result and calculate ELO
+                            if (isGameOver) {
+                                updateData.$set.result = gameResult;
+                                updateData.$set.endReason = endReason;
+                                updateData.$set.completedAt = new Date();
+
+                                // Calculate and update ELO ratings
+                                if (gameResult && gameResult !== 'draw' || endReason === 'draw' || endReason === 'stalemate' || gameResult === 'draw') {
+                                    try {
+                                        const { default: User } = await import('../models/User.js');
+                                        const { calculateRatingChanges } = await import('../utils/eloCalculator.js');
+
+                                        // Fetch game to get player IDs
+                                        const gameDoc = await Game.findById(roomId);
+                                        if (gameDoc && gameDoc.white && gameDoc.black) {
+                                            const whitePlayer = await User.findById(gameDoc.white);
+                                            const blackPlayer = await User.findById(gameDoc.black);
+
+                                            if (whitePlayer && blackPlayer) {
+                                                const ratingChanges = calculateRatingChanges(
+                                                    whitePlayer.rating,
+                                                    blackPlayer.rating,
+                                                    gameResult
+                                                );
+
+                                                // Update White Player
+                                                await User.findByIdAndUpdate(whitePlayer._id, {
+                                                    rating: ratingChanges.whiteNewRating,
+                                                    $inc: {
+                                                        gamesPlayed: 1,
+                                                        wins: gameResult === 'white' ? 1 : 0,
+                                                        losses: gameResult === 'black' ? 1 : 0,
+                                                        draws: gameResult === 'draw' ? 1 : 0
+                                                    }
+                                                });
+
+                                                // Update Black Player
+                                                await User.findByIdAndUpdate(blackPlayer._id, {
+                                                    rating: ratingChanges.blackNewRating,
+                                                    $inc: {
+                                                        gamesPlayed: 1,
+                                                        wins: gameResult === 'black' ? 1 : 0,
+                                                        losses: gameResult === 'white' ? 1 : 0,
+                                                        draws: gameResult === 'draw' ? 1 : 0
+                                                    }
+                                                });
+
+                                                // Save rating snapshot to Game
+                                                updateData.$set.whiteRatingBefore = whitePlayer.rating;
+                                                updateData.$set.whiteRatingAfter = ratingChanges.whiteNewRating;
+                                                updateData.$set.whiteRatingChange = ratingChanges.whiteChange;
+                                                updateData.$set.blackRatingBefore = blackPlayer.rating;
+                                                updateData.$set.blackRatingAfter = ratingChanges.blackNewRating;
+                                                updateData.$set.blackRatingChange = ratingChanges.blackChange;
+
+                                                console.log(`📉 Ratings updated: White ${whitePlayer.rating}->${ratingChanges.whiteNewRating}, Black ${blackPlayer.rating}->${ratingChanges.blackNewRating}`);
+
+                                                // Emit rating updates to players
+                                                room.players.forEach(p => {
+                                                    if (p.color === 'white') {
+                                                        gameNamespace.to(p.socketId).emit('ratingUpdate', {
+                                                            oldRating: whitePlayer.rating,
+                                                            newRating: ratingChanges.whiteNewRating,
+                                                            change: ratingChanges.whiteChange
+                                                        });
+                                                    } else if (p.color === 'black') {
+                                                        gameNamespace.to(p.socketId).emit('ratingUpdate', {
+                                                            oldRating: blackPlayer.rating,
+                                                            newRating: ratingChanges.blackNewRating,
+                                                            change: ratingChanges.blackChange
+                                                        });
+                                                    }
+                                                });
+                                            }
+                                        }
+                                    } catch (eloError) {
+                                        console.error('❌ Error calculating/updating ELO:', eloError);
+                                    }
+                                }
+                            }
+
+                            await Game.findByIdAndUpdate(roomId, updateData);
                             console.log(`💾 Move ${result.san} saved to DB for game ${roomId}`);
                         } catch (err) {
                             console.error('❌ Failed to save move to DB:', err);

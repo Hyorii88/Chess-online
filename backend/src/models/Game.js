@@ -53,6 +53,16 @@ const gameSchema = new mongoose.Schema({
         type: Number, // in seconds
         default: 0
     },
+    whiteRatingBefore: Number,
+    whiteRatingAfter: Number,
+    whiteRatingChange: Number,
+    blackRatingBefore: Number,
+    blackRatingAfter: Number,
+    blackRatingChange: Number,
+    startTime: {
+        type: Date,
+        default: Date.now
+    },
     createdAt: {
         type: Date,
         default: Date.now

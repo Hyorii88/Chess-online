@@ -23,6 +23,19 @@ api.interceptors.request.use(
     }
 );
 
+export const leaderboardAPI = {
+    getLeaderboard: async (limit = 50) => {
+        // Correct endpoint depends on how axios baseURL is set. 
+        // If baseURL is API_URL, then we just need '/leaderboard'. 
+        // But here we are using fetch with full URL. 
+        // Backend mounts app.use('/api/leaderboard', ...). 
+        // So full URL is http://localhost:5000/api/leaderboard
+        const response = await fetch(`${API_URL}/leaderboard?limit=${limit}`);
+        if (!response.ok) throw new Error('Failed to fetch leaderboard');
+        return response.json();
+    }
+};
+
 // Auth API
 export const authAPI = {
     register: (data: { username: string; email: string; password: string }) =>

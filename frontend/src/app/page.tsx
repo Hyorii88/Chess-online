@@ -40,7 +40,7 @@ export default function HomePage() {
     },
     {
       icon: <FaRobot className="text-5xl" />,
-      title: 'AI Coach',
+      title: 'Chess Bot',
       description: 'Ask our AI chatbot for chess advice and strategy tips',
       color: 'from-indigo-500 to-purple-500',
       link: '/coach',
@@ -117,7 +117,7 @@ export default function HomePage() {
                 <div className={`absolute inset-0 bg-gradient-to-br ${feature.color} opacity-0 group-hover:opacity-10 transition-opacity duration-300`} />
 
                 <div className={`w-14 h-14 rounded-lg bg-gradient-to-br ${feature.color} flex items-center justify-center mb-4 text-white shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-                  {React.cloneElement(feature.icon as React.ReactElement, { className: "text-2xl text-white" })}
+                  {React.cloneElement(feature.icon as React.ReactElement<any>, { className: "text-2xl text-white" })}
                 </div>
 
                 <h3 className="text-xl font-bold mb-2 text-white group-hover:text-primary-400 transition-colors no-underline">
@@ -157,7 +157,7 @@ export default function HomePage() {
             </div>
             <div>
               <div className="text-5xl font-bold gradient-text mb-2">24/7</div>
-              <div className="text-gray-400">AI Assistant</div>
+              <div className="text-gray-400">Chess Bot</div>
             </div>
           </div>
         </div>

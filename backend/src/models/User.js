@@ -30,12 +30,27 @@ const userSchema = new mongoose.Schema({
         type: Number,
         default: 1200
     },
-    stats: {
-        wins: { type: Number, default: 0 },
-        losses: { type: Number, default: 0 },
-        draws: { type: Number, default: 0 },
-        puzzlesSolved: { type: Number, default: 0 },
-        lessonsCompleted: { type: Number, default: 0 }
+    rating: {
+        type: Number,
+        default: 1500,
+        min: 0,
+        max: 3000
+    },
+    gamesPlayed: {
+        type: Number,
+        default: 0
+    },
+    wins: {
+        type: Number,
+        default: 0
+    },
+    losses: {
+        type: Number,
+        default: 0
+    },
+    draws: {
+        type: Number,
+        default: 0
     },
     isAdmin: {
         type: Boolean,
