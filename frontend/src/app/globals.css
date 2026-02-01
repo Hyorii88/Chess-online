@@ -4,6 +4,32 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Theme variables for UI components */
+@layer base {
+  :root {
+    --background: #0f172a;
+    --foreground: #f1f5f9;
+    --card: #1e293b;
+    --card-foreground: #f1f5f9;
+    --popover: #1e293b;
+    --popover-foreground: #f1f5f9;
+    --primary: #06b6d4;
+    --primary-foreground: #f1f5f9;
+    --secondary: #334155;
+    --secondary-foreground: #f1f5f9;
+    --muted: #334155;
+    --muted-foreground: #94a3b8;
+    --accent: #334155;
+    --accent-foreground: #f1f5f9;
+    --destructive: #ef4444;
+    --destructive-foreground: #ffffff;
+    --border: #334155;
+    --input: #334155;
+    --ring: #06b6d4;
+    --radius: 0.5rem;
+  }
+}
+
 :root {
   --board-light: #f0d9b5;
   --board-dark: #b58863;
@@ -19,7 +45,7 @@
 
 body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  background: linear-gradient(to bottom, #0f172a 0%, #1e293b 50%, #0f172a 100%);
   color: #f1f5f9;
   min-height: 100vh;
 }
@@ -49,9 +75,9 @@ a {
 
 /* Glassmorphism effect */
 .glass {
-  background: rgba(30, 41, 59, 0.7);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(148, 163, 184, 0.1);
+  background: rgba(30, 41, 59, 0.5);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgb(51, 65, 85);
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
 }
 
@@ -64,7 +90,7 @@ a {
 
 /* Button styles */
 .btn-primary {
-  background-color: #0284c7;
+  background-color: #06b6d4;
   color: white;
   font-weight: 600;
   padding: 0.75rem 1.5rem;
@@ -74,7 +100,7 @@ a {
 }
 
 .btn-primary:hover {
-  background-color: #0369a1;
+  background-color: #0891b2;
   transform: scale(1.05);
 }
 
@@ -103,9 +129,9 @@ a {
 
 /* Card styles */
 .card {
-  background: rgba(30, 41, 59, 0.7);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(148, 163, 184, 0.1);
+  background: rgba(30, 41, 59, 0.5);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgb(51, 65, 85);
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
   border-radius: 0.75rem;
   padding: 1.5rem;
@@ -151,7 +177,7 @@ a {
 
 /* Gradient text */
 .gradient-text {
-  background: linear-gradient(135deg, #0ea5e9 0%, #8b5cf6 100%);
+  background: linear-gradient(to right, #22d3ee, #3b82f6);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

@@ -17,30 +17,30 @@ export default function Navbar() {
     };
 
     const navLinks = [
-        { href: '/lobby', label: 'Play' },
-        { href: '/puzzles', label: 'Puzzles' },
-        { href: '/learn', label: 'Learn' },
-        { href: '/analyze', label: 'Analyze' },
-        { href: '/leaderboard', label: 'Leaderboard' },
+        { href: '/lobby', label: 'Chơi cờ' },
+        { href: '/puzzles', label: 'Giải đố' },
+        { href: '/learn', label: 'Học cờ' },
+        { href: '/leaderboard', label: 'Bảng xếp hạng' },
+        { href: '/coach', label: 'Chess Bot' },
     ];
 
     return (
-        <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-dark-700">
+        <nav className="fixed top-0 left-0 right-0 z-50 bg-slate-900 border-b border-slate-700">
             <div className="max-w-7xl mx-auto px-6 py-4">
                 <div className="flex items-center justify-between">
                     {/* Logo */}
                     <Link href="/" className="flex items-center gap-2 text-2xl font-bold group">
-                        <FaChessKnight className="text-primary-500 group-hover:rotate-12 transition-transform" />
-                        <span className="gradient-text">ChessMaster</span>
+                        <FaChessKnight className="text-cyan-400 group-hover:rotate-12 transition-transform" />
+                        <span className="text-white">ChessMaster</span>
                     </Link>
 
                     {/* Desktop Navigation */}
-                    <div className="hidden md:flex items-center gap-8">
-                        {isAuthenticated && navLinks.map((link) => (
+                    <div className="hidden md:flex items-center gap-6">
+                        {navLinks.map((link) => (
                             <Link
                                 key={link.href}
                                 href={link.href}
-                                className="text-gray-300 hover:text-white transition-colors font-medium"
+                                className="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-all font-medium text-sm"
                             >
                                 {link.label}
                             </Link>
@@ -53,7 +53,7 @@ export default function Navbar() {
                             <>
                                 <Link
                                     href="/profile"
-                                    className="flex items-center gap-3 glass px-4 py-2 rounded-lg hover:bg-dark-700 transition-colors"
+                                    className="flex items-center gap-3 bg-slate-800/50 backdrop-blur px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors border border-slate-700"
                                 >
                                     <img
                                         src={user?.avatar || '/default-avatar.png'}
@@ -61,8 +61,8 @@ export default function Navbar() {
                                         className="w-8 h-8 rounded-full"
                                     />
                                     <div className="text-left">
-                                        <div className="text-sm font-semibold">{user?.username}</div>
-                                        <div className="text-xs text-gray-400 flex items-center gap-1">
+                                        <div className="text-sm font-semibold text-white">{user?.username}</div>
+                                        <div className="text-xs text-cyan-400 flex items-center gap-1">
                                             <FaTrophy className="text-yellow-500" />
                                             {user?.elo}
                                         </div>
@@ -70,19 +70,19 @@ export default function Navbar() {
                                 </Link>
                                 <button
                                     onClick={handleLogout}
-                                    className="btn-secondary py-2 px-4 flex items-center gap-2"
+                                    className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-all flex items-center gap-2"
                                 >
                                     <FaSignOutAlt />
-                                    Logout
+                                    Đăng xuất
                                 </button>
                             </>
                         ) : (
                             <>
-                                <Link href="/auth/login" className="btn-secondary py-2 px-6">
-                                    Sign In
+                                <Link href="/auth/login" className="px-6 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-all">
+                                    Đăng nhập
                                 </Link>
-                                <Link href="/auth/register" className="btn-primary py-2 px-6">
-                                    Get Started
+                                <Link href="/auth/register" className="px-6 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg font-semibold transition-all shadow-lg shadow-cyan-500/30">
+                                    Đăng ký
                                 </Link>
                             </>
                         )}
@@ -100,13 +100,13 @@ export default function Navbar() {
 
             {/* Mobile Menu Overlay */}
             {mobileMenuOpen && (
-                <div className="md:hidden fixed inset-0 z-50 bg-[#0f172a]/95 backdrop-blur-xl flex flex-col animate-fade-in">
+                <div className="md:hidden fixed inset-0 z-50 bg-slate-900/95 backdrop-blur-xl flex flex-col animate-fade-in">
                     {/* Header inside Menu */}
-                    <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+                    <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700">
                         <span className="text-xl font-bold gradient-text">Menu</span>
                         <button
                             onClick={() => setMobileMenuOpen(false)}
-                            className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 text-white hover:bg-white/10 transition-colors"
+                            className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-800 text-white hover:bg-slate-700 transition-colors"
                         >
                             <FaTimes />
                         </button>

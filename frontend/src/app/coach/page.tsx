@@ -18,7 +18,7 @@ export default function CoachPage() {
         {
             id: 'welcome',
             role: 'assistant',
-            content: "Chào bạn! Tôi là Chess Bot. ♟️\nTôi có thể giúp bạn phân tích ván đấu, gợi ý khai cuộc, hay giải đáp mọi thắc mắc về chiến thuật. Bạn muốn bắt đầu từ đâu?",
+            content: "Chào bạn! Tôi là Chess Bot.\nTôi có thể giúp bạn phân tích ván đấu, gợi ý khai cuộc, hay giải đáp mọi thắc mắc về chiến thuật. Bạn muốn bắt đầu từ đâu?",
             timestamp: new Date()
         }
     ]);
@@ -58,11 +58,11 @@ export default function CoachPage() {
             if (q.includes('ruy lopez') || q.includes('tây ban nha')) {
                 reply = "Khai cuộc **Ruy Lopez** (1.e4 e5 2.Nf3 Nc6 3.Bb5) là một kiệt tác của cờ vua cổ điển. \n\n**Mục tiêu chính:**\n- Kiểm soát trung tâm nhanh chóng.\n- Phát triển quân nhẹ (Mã, Tượng) để nhập thành sớm.\n- Tạo áp lực lâu dài lên tốt e5 của Đen.";
             } else if (q.includes('sicilian') || q.includes('sicilia') || q.includes('phòng thủ')) {
-                reply = "Phòng thủ **Sicilian** (1.e4 c5) là lựa chọn chiến đấu nhất của Đen! 🔥\nThay vì đáp trả đối xứng (e5), Đen phản công vào ô d4 từ cánh. Điều này dẫn đến các ván đấu cực kỳ phức tạp và sắc bén.";
+                reply = "Phòng thủ **Sicilian** (1.e4 c5) là lựa chọn chiến đấu nhất của Đen!\nThay vì đáp trả đối xứng (e5), Đen phản công vào ô d4 từ cánh. Điều này dẫn đến các ván đấu cực kỳ phức tạp và sắc bén.";
             } else if (q.includes('cải thiện') || q.includes('tập luyện')) {
-                reply = "Lộ trình 3 bước để cải thiện Elo:\n1. 🧩 **Chiến thuật (Tactics):** Dành 15 phút mỗi ngày giải đố.\n2. 🔍 **Phân tích (Analyze):** Đừng chỉ chơi, hãy xem lại tại sao mình thua.\n3. 🏰 **Cờ tàn (Endgame):** Học cách chiếu hết bằng Xe và Hậu thành thạo.";
+                reply = "Lộ trình 3 bước để cải thiện Elo:\n1. **Chiến thuật (Tactics):** Dành 15 phút mỗi ngày giải đố.\n2. **Phân tích (Analyze):** Đừng chỉ chơi, hãy xem lại tại sao mình thua.\n3. **Cờ tàn (Endgame):** Học cách chiếu hết bằng Xe và Hậu thành thạo.";
             } else if (q.includes('chào')) {
-                reply = "Chào cao thủ tương lai! 👋 Hôm nay chúng ta sẽ luyện tập gì nào? Khai cuộc hay Chiến thuật?";
+                reply = "Chào cao thủ tương lai! Hôm nay chúng ta sẽ luyện tập gì nào? Khai cuộc hay Chiến thuật?";
             } else {
                 reply = "Câu hỏi rất thú vị! Để tôi phân tích sâu hơn... \n(Hiện tại tôi đang ở chế độ demo, hãy thử hỏi về 'Ruy Lopez', 'Sicilian' hoặc cách 'cải thiện' trình độ nhé!)";
             }

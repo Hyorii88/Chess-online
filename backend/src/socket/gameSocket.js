@@ -7,7 +7,7 @@ export const initializeGameSocket = (io) => {
     const gameNamespace = io.of('/game');
 
     gameNamespace.on('connection', (socket) => {
-        console.log(`🎮 Game socket connected: ${socket.id}`);
+        console.log(`Game socket connected: ${socket.id}`);
 
         // Join a game room
         socket.on('joinRoom', async ({ roomId, userId, username }) => {
@@ -47,7 +47,7 @@ export const initializeGameSocket = (io) => {
                         chess: chess,
                         spectators: []
                     });
-                    console.log(`📂 Room ${roomId} loaded from ${gameFromDb ? 'DB' : 'Scratch'}`);
+                    console.log(`Room ${roomId} loaded from ${gameFromDb ? 'DB' : 'Scratch'}`);
                 }
 
                 const room = gameRooms.get(roomId);
@@ -142,7 +142,7 @@ export const initializeGameSocket = (io) => {
             const player = room.players.find(p => p.socketId === socket.id);
             if (!player) {
                 socket.emit('invalidMove', { error: 'You are not a player in this game' });
-                console.warn(`⚠️ Non-player attempted move in ${roomId}`);
+                console.warn(`WARNING: Non-player attempted move in ${roomId}`);
                 return;
             }
 
@@ -151,11 +151,11 @@ export const initializeGameSocket = (io) => {
                 socket.emit('invalidMove', {
                     error: `Not your turn! It's ${currentTurn === 'w' ? "White" : "Black"}'s turn`
                 });
-                console.warn(`⚠️ ${player.username} (${player.color}) attempted to move on ${currentTurn === 'w' ? 'White' : 'Black'}'s turn`);
+                console.warn(`WARNING: ${player.username} (${player.color}) attempted to move on ${currentTurn === 'w' ? 'White' : 'Black'}'s turn`);
                 return;
             }
 
-            console.log(`♟️ Move attempt in ${roomId}:`, move);
+            console.log(`Move attempt in ${roomId}:`, move);
             console.log(`   Current FEN: ${room.chess.fen()}`);
 
             try {
@@ -165,7 +165,7 @@ export const initializeGameSocket = (io) => {
                     const isGameOver = room.chess.isGameOver();
 
                     // DEBUG: Log game state after every move
-                    console.log(`\n🔍 After move ${result.san}:`);
+                    console.log(`\nAfter move ${result.san}:`);
                     console.log(`   FEN: ${fen}`);
                     console.log(`   isGameOver: ${isGameOver}`);
                     console.log(`   isCheckmate: ${room.chess.isCheckmate()}`);
@@ -198,7 +198,7 @@ export const initializeGameSocket = (io) => {
                         console.log(`🏁 Game Over in ${roomId}. Result: ${gameResult}, Reason: ${endReason}`);
 
                     } else {
-                        console.log(`✅ Game continues`);
+                        console.log(`Game continues`);
                     }
 
                     // Send move update to ALL players with PERSONALIZED data
@@ -231,7 +231,7 @@ export const initializeGameSocket = (io) => {
                         });
                     }
 
-                    console.log(`✅ Move successful: ${result.san}. New FEN: ${fen}`);
+                    console.log(`Move successful: ${result.san}. New FEN: ${fen}`);
 
                     // Save move to database (Persistence)
                     // Save move to database (Persistence)
@@ -310,7 +310,7 @@ export const initializeGameSocket = (io) => {
                                                 updateData.$set.blackRatingAfter = ratingChanges.blackNewRating;
                                                 updateData.$set.blackRatingChange = ratingChanges.blackChange;
 
-                                                console.log(`📉 Ratings updated: White ${whitePlayer.rating}->${ratingChanges.whiteNewRating}, Black ${blackPlayer.rating}->${ratingChanges.blackNewRating}`);
+                                                console.log(`Ratings updated: White ${whitePlayer.rating}->${ratingChanges.whiteNewRating}, Black ${blackPlayer.rating}->${ratingChanges.blackNewRating}`);
 
                                                 // Emit rating updates to players
                                                 room.players.forEach(p => {
@@ -343,7 +343,7 @@ export const initializeGameSocket = (io) => {
                         }
                     });
                 } else {
-                    console.warn(`⚠️ Move failed (logic):`, move);
+                    console.warn(`WARNING: Move failed (logic):`, move);
                 }
             } catch (error) {
                 console.error(`❌ Invalid move error:`, error.message);
@@ -416,7 +416,7 @@ export const initializeGameSocket = (io) => {
 
         // Disconnect
         socket.on('disconnect', () => {
-            console.log(`🎮 Game socket disconnected: ${socket.id}`);
+            console.log(`Game socket disconnected: ${socket.id}`);
 
             // Remove from all rooms
             gameRooms.forEach((room, roomId) => {
@@ -435,5 +435,5 @@ export const initializeGameSocket = (io) => {
         });
     });
 
-    console.log('✅ Game socket handlers initialized');
+    console.log('Game socket handlers initialized');
 };

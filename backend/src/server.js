@@ -43,7 +43,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Database connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/chess-platform')
-    .then(() => console.log('✅ Connected to MongoDB'))
+    .then(() => console.log('Connected to MongoDB'))
     .catch((err) => console.error('❌ MongoDB connection error:', err));
 
 // API Routes
@@ -76,7 +76,7 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 
 httpServer.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`Server running on port ${PORT}`);
     console.log(`📡 Socket.IO ready for connections`);
 });
 

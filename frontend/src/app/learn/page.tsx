@@ -1,136 +1,123 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
+import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
-import { FaBookOpen, FaVideo, FaChessBoard, FaGraduationCap, FaPlay, FaChevronDown, FaChevronUp } from 'react-icons/fa';
+import { BookOpen, ChevronRight, Play, ArrowLeft } from 'lucide-react';
 
 export default function LearnPage() {
-    // State to track which lesson is currently expanded (playing video)
-    const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
+    const router = useRouter();
 
-    const toggleLesson = (id: string) => {
-        if (activeLessonId === id) {
-            setActiveLessonId(null);
-        } else {
-            setActiveLessonId(id);
-        }
-    };
-
-    const categories = [
+    const courses = [
         {
-            id: 'openings',
-            title: 'Openings',
-            icon: <FaBookOpen className="text-4xl text-blue-400" />,
-            description: 'Master the principles of opening play.',
+            category: 'Khai cuộc',
+            description: 'Nắm vững các nguyên tắc chơi khai cuộc.',
             lessons: [
-                { id: 'l1', title: 'Opening Principles', difficulty: 'Beginner', duration: '48 min', videoId: 'fKxMNgXVphg' }, // Seirawan
-                { id: 'l2', title: 'The Ruy Lopez', difficulty: 'Intermediate', duration: '25 min', videoId: 'YyJPlD7jFBQ' }, // Seirawan
-                { id: 'l3', title: 'Queens Gambit', difficulty: 'Advanced', duration: '30 min', videoId: '0d8dciI4X2I' },
+                { title: 'Nguyên tắc khai cuộc', duration: '28 phút', level: 'Người mới' },
+                { title: 'Khai cuộc Ruy Lopez', duration: '45 phút', level: 'Trung bình' },
+                { title: 'Gambit hậu', duration: '36 phút', level: 'Nâng cao' },
             ]
         },
         {
-            id: 'tactics',
-            title: 'Tactics & Strategy',
-            icon: <FaChessBoard className="text-4xl text-green-400" />,
-            description: 'Sharpen your tactical vision and strategic planning.',
+            category: 'Chiến thuật & Chiến lược',
+            description: 'Mài giũa tầm nhìn chiến thuật và kế hoạch chiến lược.',
             lessons: [
-                { id: 'l4', title: 'Tactics & Combinations', difficulty: 'Beginner', duration: '45 min', videoId: '21L4yITK5v4' }, // Seirawan
-                { id: 'l5', title: 'Advanced Strategy', difficulty: 'Advanced', duration: '50 min', videoId: 'Ld9h48t9sMw' }, // Seirawan
-                { id: 'l6', title: 'Attacking the King', difficulty: 'Intermediate', duration: '40 min', videoId: '5f6_q5W-0oE' },
+                { title: 'Chiến thuật & Combo', duration: '45 phút', level: 'Người mới' },
+                { title: 'Chiến lược nâng cao', duration: '52 phút', level: 'Nâng cao' },
+                { title: 'Tấn công vua', duration: '40 phút', level: 'Trung bình' },
             ]
         },
         {
-            id: 'endgames',
-            title: 'Endgames',
-            icon: <FaGraduationCap className="text-4xl text-purple-400" />,
-            description: 'Convert your advantage into a win.',
+            category: 'Tàn cuộc',
+            description: 'Biến lợi thế của bạn thành chiến thắng.',
             lessons: [
-                { id: 'l7', title: 'Endgame Principles', difficulty: 'Beginner', duration: '45 min', videoId: 'mCcs8QZc4sE' }, // Seirawan
-                { id: 'l8', title: 'Rook Endgames', difficulty: 'Advanced', duration: '35 min', videoId: 'U2d8rQe-vFk' },
-                { id: 'l9', title: 'Pawn Structures', difficulty: 'Intermediate', duration: '30 min', videoId: 'Z3I_C5M2Vgg' },
+                { title: 'Nguyên tắc tàn cuộc', duration: '35 phút', level: 'Người mới' },
+                { title: 'Tàn cuộc Vua & Tốt', duration: '42 phút', level: 'Trung bình' },
+                { title: 'Kỹ thuật tàn cuộc phức tạp', duration: '55 phút', level: 'Nâng cao' },
+            ]
+        },
+        {
+            category: 'Phân tích trận đấu',
+            description: 'Học cách phân tích và cải thiện trận đấu của bạn.',
+            lessons: [
+                { title: 'Cơ bản phân tích', duration: '30 phút', level: 'Người mới' },
+                { title: 'Sử dụng công cụ phân tích', duration: '38 phút', level: 'Trung bình' },
+                { title: 'Phân tích chuyên sâu', duration: '50 phút', level: 'Nâng cao' },
             ]
         }
     ];
 
+    const getLevelColor = (level: string) => {
+        if (level === 'Người mới') return 'text-green-400 bg-green-400/10';
+        if (level === 'Trung bình') return 'text-yellow-400 bg-yellow-400/10';
+        return 'text-red-400 bg-red-400/10';
+    };
+
     return (
-        <div className="min-h-screen">
+        <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
             <Navbar />
 
-            <div className="pt-24 pb-12 px-6">
-                <div className="max-w-7xl mx-auto">
-                    <div className="text-center mb-16">
-                        <h1 className="text-5xl font-bold mb-6">
-                            Chess <span className="gradient-text">Academy</span>
-                        </h1>
-                        <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-                            Master the game with lectures from Grandmaster Yasser Seirawan and other top instructors.
+            <div className="py-12 px-4 pt-24">
+                <div className="max-w-6xl mx-auto">
+                    <button
+                        onClick={() => router.back()}
+                        className="flex items-center gap-2 text-cyan-400 hover:text-cyan-300 mb-8 transition-colors"
+                    >
+                        <ArrowLeft className="w-5 h-5" />
+                        <span className="font-semibold">Quay lại</span>
+                    </button>
+
+                    <div className="text-center mb-12">
+                        <div className="flex items-center justify-center gap-3 mb-4">
+                            <BookOpen className="w-12 h-12 text-cyan-400" />
+                            <h1 className="text-4xl md:text-5xl font-bold">
+                                <span className="text-white">Chess </span>
+                                <span className="bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+                                    Academy
+                                </span>
+                            </h1>
+                        </div>
+                        <p className="text-xl text-slate-300">
+                            Làm chủ trò chơi với các bài giảng từ Grandmaster và các giảng viên hàng đầu.
                         </p>
                     </div>
 
-                    <div className="grid md:grid-cols-3 gap-8 mb-16">
-                        {categories.map((category) => (
-                            <div key={category.id} className="card h-fit">
-                                <div className="mb-6 bg-dark-800 w-16 h-16 rounded-xl flex items-center justify-center shadow-lg">
-                                    {category.icon}
+                    <div className="space-y-8">
+                        {courses.map((course, index) => (
+                            <div
+                                key={index}
+                                className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-2xl overflow-hidden hover:border-cyan-500/50 transition-all"
+                            >
+                                <div className="p-6 bg-gradient-to-r from-slate-800 to-slate-800/50">
+                                    <h2 className="text-2xl font-bold text-white mb-2">{course.category}</h2>
+                                    <p className="text-slate-300">{course.description}</p>
                                 </div>
-                                <h2 className="text-2xl font-bold mb-3">{category.title}</h2>
-                                <p className="text-gray-400 mb-6 text-sm min-h-[40px]">{category.description}</p>
 
-                                <div className="space-y-4">
-                                    {category.lessons.map((lesson) => (
+                                <div className="divide-y divide-slate-700">
+                                    {course.lessons.map((lesson, lessonIndex) => (
                                         <div
-                                            key={lesson.id}
-                                            className={`bg-dark-800/50 border rounded-lg transition-all overflow-hidden ${activeLessonId === lesson.id
-                                                    ? 'border-primary-500 bg-dark-800 shadow-lg ring-1 ring-primary-500/50'
-                                                    : 'border-dark-700 hover:border-dark-500'
-                                                }`}
+                                            key={lessonIndex}
+                                            className="p-6 hover:bg-slate-700/30 transition-all cursor-pointer group"
                                         >
-                                            {/* Lesson Header */}
-                                            <div
-                                                onClick={() => toggleLesson(lesson.id)}
-                                                className="p-3 flex items-center justify-between cursor-pointer"
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${activeLessonId === lesson.id ? 'bg-primary-600' : 'bg-dark-900 group-hover:bg-dark-700'}`}>
-                                                        {activeLessonId === lesson.id ? <FaChevronUp className="text-xs" /> : <FaPlay className="text-xs ml-0.5" />}
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-4 flex-1">
+                                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                        <Play className="w-6 h-6 text-white" />
                                                     </div>
-                                                    <div>
-                                                        <h3 className={`font-medium text-sm transition-colors ${activeLessonId === lesson.id ? 'text-primary-400' : 'text-gray-200'}`}>
+                                                    <div className="flex-1">
+                                                        <h3 className="text-lg font-semibold text-white mb-1 group-hover:text-cyan-400 transition-colors">
                                                             {lesson.title}
                                                         </h3>
-                                                        <div className="flex gap-2 text-[10px] text-gray-500 mt-0.5">
-                                                            <span className={
-                                                                lesson.difficulty === 'Beginner' ? 'text-green-400' :
-                                                                    lesson.difficulty === 'Intermediate' ? 'text-yellow-400' : 'text-red-400'
-                                                            }>{lesson.difficulty}</span>
-                                                            <span>• {lesson.duration}</span>
+                                                        <div className="flex items-center gap-3 text-sm">
+                                                            <span className="text-slate-400">{lesson.duration}</span>
+                                                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getLevelColor(lesson.level)}`}>
+                                                                {lesson.level}
+                                                            </span>
                                                         </div>
                                                     </div>
                                                 </div>
+                                                <ChevronRight className="w-6 h-6 text-slate-500 group-hover:text-cyan-400 group-hover:translate-x-1 transition-all" />
                                             </div>
-
-                                            {/* Expanded Video Player */}
-                                            {activeLessonId === lesson.id && (
-                                                <div className="border-t border-dark-700">
-                                                    <div className="aspect-video w-full bg-black">
-                                                        <iframe
-                                                            width="100%"
-                                                            height="100%"
-                                                            src={`https://www.youtube.com/embed/${lesson.videoId}?autoplay=1&origin=http://localhost:3000`}
-                                                            title={lesson.title}
-                                                            frameBorder="0"
-                                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                                            allowFullScreen
-                                                        ></iframe>
-                                                    </div>
-                                                    <div className="p-3 text-xs text-gray-400 bg-dark-900/50 flex justify-between items-center">
-                                                        <span>Watching: <span className="text-white font-semibold">{lesson.title}</span></span>
-                                                        <a href={`https://www.youtube.com/watch?v=${lesson.videoId}`} target="_blank" rel="noopener noreferrer" className="text-primary-400 hover:underline">
-                                                            Watch on YouTube ↗
-                                                        </a>
-                                                    </div>
-                                                </div>
-                                            )}
                                         </div>
                                     ))}
                                 </div>
@@ -138,27 +125,24 @@ export default function LearnPage() {
                         ))}
                     </div>
 
-                    {/* Featured Video Section */}
-                    <div className="mt-20">
-                        <h2 className="text-3xl font-bold mb-8 flex items-center gap-3">
-                            <FaVideo className="text-red-500" />
-                            Featured Video Lesson
-                        </h2>
-                        <div className="card p-0 overflow-hidden text-center bg-dark-800">
-                            <div className="aspect-w-16 aspect-h-9 h-[500px]">
-                                <iframe
-                                    width="100%"
-                                    height="100%"
-                                    src={`https://www.youtube.com/embed/fKxMNgXVphg?origin=http://localhost:3000`}
-                                    title="Opening Principles"
-                                    frameBorder="0"
-                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                    allowFullScreen
-                                ></iframe>
+                    {/* Progress Section */}
+                    <div className="mt-12 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/30 rounded-2xl p-8">
+                        <h3 className="text-2xl font-bold text-white mb-6">Tiến độ học tập của bạn</h3>
+                        <div className="grid md:grid-cols-3 gap-6">
+                            <div className="text-center">
+                                <div className="text-4xl font-bold text-cyan-400 mb-2">12</div>
+                                <div className="text-slate-300">Bài học đã hoàn thành</div>
+                            </div>
+                            <div className="text-center">
+                                <div className="text-4xl font-bold text-cyan-400 mb-2">8.5h</div>
+                                <div className="text-slate-300">Tổng thời gian học</div>
+                            </div>
+                            <div className="text-center">
+                                <div className="text-4xl font-bold text-cyan-400 mb-2">65%</div>
+                                <div className="text-slate-300">Điểm trung bình</div>
                             </div>
                         </div>
                     </div>
-
                 </div>
             </div>
         </div>

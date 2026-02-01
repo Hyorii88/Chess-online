@@ -17,7 +17,7 @@ Keep responses concise but informative.`;
 
     initialize() {
         if (!process.env.OPENAI_API_KEY) {
-            console.warn('⚠️  OpenAI API key not configured. Chatbot will use fallback responses.');
+            console.warn('WARNING: OpenAI API key not configured. Chatbot will use fallback responses.');
             return false;
         }
 
@@ -25,7 +25,7 @@ Keep responses concise but informative.`;
             this.client = new OpenAI({
                 apiKey: process.env.OPENAI_API_KEY
             });
-            console.log('✅ OpenAI client initialized');
+            console.log('OpenAI client initialized');
             return true;
         } catch (error) {
             console.error('❌ Failed to initialize OpenAI:', error);

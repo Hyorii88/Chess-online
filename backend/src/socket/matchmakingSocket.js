@@ -5,16 +5,16 @@ export const initializeMatchmakingSocket = (io) => {
     const matchmakingNamespace = io.of('/matchmaking');
 
     matchmakingNamespace.on('connection', (socket) => {
-        console.log(`🎯 Matchmaking socket connected: ${socket.id}`);
+        console.log(`Matchmaking socket connected: ${socket.id}`);
 
         // Join matchmaking queue
         socket.on('joinQueue', ({ userId, username, elo }) => {
-            console.log(`🔍 Join request from: ${username} (${userId})`);
+            console.log(`Join request from: ${username} (${userId})`);
 
             // Check if user already in queue
             const existingIndex = matchmakingQueue.findIndex(p => p.userId === userId);
             if (existingIndex !== -1) {
-                console.log(`⚠️ User ${username} already in queue. Removing previous entry to avoid duplicates.`);
+                console.log(`WARNING: User ${username} already in queue. Removing previous entry to avoid duplicates.`);
                 matchmakingQueue.splice(existingIndex, 1);
             }
 
@@ -57,7 +57,7 @@ export const initializeMatchmakingSocket = (io) => {
         });
     });
 
-    console.log('✅ Matchmaking socket handlers initialized');
+    console.log('Matchmaking socket handlers initialized');
 };
 
 // Try to match players
@@ -115,7 +115,7 @@ async function tryMatch(namespace) {
             opponent: player1
         });
 
-        console.log(`✅ Match created in DB: ${player1.username} vs ${player2.username} (Room: ${roomId})`);
+        console.log(`Match created in DB: ${player1.username} vs ${player2.username} (Room: ${roomId})`);
     } catch (error) {
         console.error('❌ Error creating matchmaking game:', error);
         // Refund players to queue? For now just log.
