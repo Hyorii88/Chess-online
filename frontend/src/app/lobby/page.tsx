@@ -10,13 +10,16 @@ import toast from 'react-hot-toast';
 import { gameAPI } from '@/lib/api';
 
 export default function LobbyPage() {
-    const { user, isAuthenticated } = useAuth();
+    const { user, isAuthenticated, loading } = useAuth();
     const router = useRouter();
     const [socket, setSocket] = useState<Socket | null>(null);
     const [isSearching, setIsSearching] = useState(false);
     const [aiDifficulty, setAiDifficulty] = useState(10);
 
     useEffect(() => {
+        // Wait for auth to finish loading before redirecting
+        if (loading) return;
+
         if (!isAuthenticated) {
             router.push(`/auth/login?returnUrl=${encodeURIComponent(window.location.pathname)}`);
             return;
@@ -41,7 +44,7 @@ export default function LobbyPage() {
         return () => {
             newSocket.close();
         };
-    }, [isAuthenticated, router]);
+    }, [isAuthenticated, loading, router]);
 
     const handlePlayAI = async () => {
         try {
@@ -95,6 +98,18 @@ export default function LobbyPage() {
             toast.error('Failed to create room');
         }
     };
+
+    // Show loading state while checking authentication
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center">
+                    <div className="spinner w-12 h-12 border-4 mx-auto mb-4"></div>
+                    <p className="text-gray-400">Loading...</p>
+                </div>
+            </div>
+        );
+    }
 
     if (!isAuthenticated) {
         return null;

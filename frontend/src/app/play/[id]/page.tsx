@@ -18,7 +18,7 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
     const mode = searchParams.get('mode');
     const difficulty = searchParams.get('difficulty');
 
-    const { user, isAuthenticated } = useAuth();
+    const { user, isAuthenticated, loading } = useAuth();
     const router = useRouter();
 
     const [game, setGame] = useState(new Chess());
@@ -41,6 +41,9 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
     const [gameEndReason, setGameEndReason] = useState<string | null>(null);
 
     useEffect(() => {
+        // Wait for auth to finish loading before redirecting
+        if (loading) return;
+
         if (!isAuthenticated) {
             router.push(`/auth/login?returnUrl=${encodeURIComponent(window.location.pathname + window.location.search)}`);
             return;
@@ -213,7 +216,7 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
             newSocket.emit('leaveRoom', { roomId: gameId, userId: user?.id });
             newSocket.close();
         };
-    }, [gameId, isAuthenticated, router]);
+    }, [gameId, isAuthenticated, loading, router]);
 
     const makeAIMove = async (currentGame: Chess) => {
         setThinking(true);
@@ -427,6 +430,18 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
 
         setChatInput('');
     };
+
+    // Show loading state while checking authentication
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center">
+                    <div className="spinner w-12 h-12 border-4 mx-auto mb-4"></div>
+                    <p className="text-gray-400">Loading...</p>
+                </div>
+            </div>
+        );
+    }
 
     if (!isAuthenticated) {
         return null;

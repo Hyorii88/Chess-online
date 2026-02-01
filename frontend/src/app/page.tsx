@@ -7,7 +7,7 @@ import { FaChess, FaPuzzlePiece, FaBook, FaChartLine, FaRobot, FaUsers } from 'r
 import Navbar from '@/components/Navbar';
 
 export default function HomePage() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
 
   const features = [
     {
@@ -77,7 +77,13 @@ export default function HomePage() {
             Play online, solve puzzles, learn strategies, and improve your skills with AI-powered analysis
           </p>
           <div className="flex gap-4 justify-center flex-wrap">
-            {isAuthenticated ? (
+            {loading ? (
+              <div className="flex gap-4">
+                <div className="btn-primary text-lg px-8 py-4 opacity-50 cursor-wait">
+                  Loading...
+                </div>
+              </div>
+            ) : isAuthenticated ? (
               <>
                 <Link href="/lobby" className="btn-primary text-lg px-8 py-4">
                   Play Now

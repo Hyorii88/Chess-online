@@ -1,358 +1,291 @@
-# ♟️ Chess Learning Platform
+# Chess Learning Platform
 
-A comprehensive full-stack chess web application with **AI Stockfish integration**, **real-time multiplayer**, **puzzle system**, **learning resources**, and **AI chatbot coaching**.
+Nền tảng học và chơi cờ vua trực tuyến với AI, puzzles, lessons và multiplayer.
 
-## 🎯 Features
+## 📋 Yêu Cầu Hệ Thống
 
-### 🎮 Gameplay
-- **Play vs AI**: Challenge Stockfish engine with 20 difficulty levels
-- **Online Multiplayer**: Real-time chess games with automatic matchmaking
-- **Private Rooms**: Create custom games and invite friends
-- **Move Validation**: Chess.js integration for legal move checking
-- **Game History**: Track all your matches and review them later
+### Phần mềm cần thiết:
+- **Node.js**: v18.0.0 trở lên ([Download](https://nodejs.org/))
+- **npm**: v9.0.0 trở lên (đi kèm với Node.js)
+- **MongoDB**: v5.0 trở lên ([Download](https://www.mongodb.com/try/download/community))
+- **Git**: Để clone repository
 
-### 🧩 Learning & Practice
-- **Chess Puzzles**: Solve tactical puzzles (mate-in-1, mate-in-2, forks, pins, etc.)
-- **Video Lessons**: Learn openings, tactics, and endgames
-- **Interactive Tutorials**: Step-by-step chess education
-- **Progress Tracking**: Monitor your improvement over time
+### Kiểm tra phiên bản đã cài:
+```bash
+node --version
+npm --version
+mongod --version
+```
 
-### 📊 Analysis
-- **Stockfish Analysis**: Deep position evaluation
-- **Best Move Suggestions**: Get AI-powered move recommendations
-- **PGN/FEN Support**: Import and analyze any chess position
-- **Evaluation Bar**: Visual position assessment
+---
 
-### 🤖 AI Coach
-- **Chatbot Integration**: Ask questions about chess strategy
-- **Opening Guidance**: Get personalized opening recommendations
-- **Tactical Advice**: Learn tactical patterns and combinations
-- **Contextual Help**: Real-time chess coaching
+## 🚀 Cài Đặt và Chạy Project
 
-### 👑 Community
-- **Elo Rating System**: Competitive ranking
-- **Leaderboards**: Compete with players worldwide
-- **User Profiles**: Track stats, achievements, and history
-- **In-Game Chat**: Communicate with opponents
-
-## 🛠️ Tech Stack
-
-### Frontend
-- **Framework**: Next.js 14 (App Router) + TypeScript
-- **UI Library**: React 19
-- **Styling**: TailwindCSS with custom dark theme
-- **Chess Board**: react-chessboard
-- **Chess Logic**: chess.js
-- **Real-time**: Socket.IO client
-- **State Management**: React Context API
-- **Notifications**: react-hot-toast
-- **Animations**: Framer Motion
-
-### Backend
-- **Runtime**: Node.js
-- **Framework**: Express
-- **Database**: MongoDB (Mongoose ODM)
-- **Authentication**: JWT (jsonwebtoken + bcryptjs)
-- **Real-time**: Socket.IO
-- **Chess Engine**: Custom Stockfish implementation
-- **AI Chat**: OpenAI API (GPT-3.5-turbo)
-- **Chess Logic**: chess.js
-
-## 📦 Installation
-
-### Prerequisites
-- Node.js 18+ installed
-- MongoDB installed and running (or MongoDB Atlas account)
-- OpenAI API key (optional, for chatbot features)
-
-### 1. Clone the Repository
+### 1. Clone Repository (nếu chưa có)
 ```bash
 git clone <repository-url>
 cd chess-learning-platform
 ```
 
-### 2. Backend Setup
+### 2. Cài Đặt Backend
 
 ```bash
-# Navigate to backend
+# Di chuyển vào thư mục backend
 cd backend
 
-# Install dependencies
+# Cài đặt dependencies
 npm install
 
-# Configure environment variables
-cp .env.example .env
-# Edit .env and add your configurations:
-# - MONGODB_URI (your MongoDB connection string)
-# - JWT_SECRET (your secret key)
-# - OPENAI_API_KEY (optional - for AI chatbot)
-
-# Start backend server
-npm run dev
+# Tạo file .env
+# Copy nội dung bên dưới vào file .env
 ```
 
-The backend will run on `http://localhost:5000`
-
-### 3. Frontend Setup
-
-```bash
-# Navigate to frontend (from project root)
-cd frontend
-
-# Install dependencies
-npm install
-
-# Configure environment variables
-# Create .env.local file (already created)
-# Verify the API URLs are correct
-
-# Start frontend development server
-npm run dev
-```
-
-The frontend will run on `http://localhost:3000`
-
-## 🚀 Running the Application
-
-### Quick Start
-
-**Make sure MongoDB is running first:**
-
-```bash
-# Windows - if MongoDB is installed as a service
-net start MongoDB
-
-# Or start MongoDB manually
-mongod --dbpath "C:\data\db"
-```
-
-**Then run the application:**
-
-```bash
-# Install all dependencies (first time only)
-npm run install:all
-
-# Run both backend and frontend
-npm run dev
-```
-
-**Access the application:**
-- **Frontend:** http://localhost:3000
-- **Backend API:** http://localhost:5000
-
-> **💡 Để truy cập từ máy khác (LAN):** Xem file `TRUY_CAP_LAN.md`
-
----
-
-### Alternative: Run Separately
-
-If you prefer to run them in separate terminals:
-
-1. **Start MongoDB** (if running locally):
-   ```bash
-   mongod
-   ```
-
-2. **Start Backend** (Terminal 1):
-   ```bash
-   cd backend
-   npm run dev
-   ```
-
-3. **Start Frontend** (Terminal 2):
-   ```bash
-   cd frontend
-   npm run dev
-   ```
-
-4. **Open Browser**:
-   Navigate to `http://localhost:3000`
-
-### Production Build
-
-```bash
-# Backend
-cd backend
-npm start
-
-# Frontend
-cd frontend
-npm run build
-npm start
-```
-
-## 📖 API Documentation
-
-### Authentication
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - Login user
-- `GET /api/auth/verify` - Verify JWT token
-
-### User
-- `GET /api/user/profile` - Get user profile
-- `PUT /api/user/profile` - Update profile
-- `GET /api/user/stats/:id` - Get user statistics
-- `GET /api/user/leaderboard` - Get global leaderboard
-
-### Games
-- `POST /api/games/create` - Create new game
-- `GET /api/games/:id` - Get game by ID
-- `GET /api/games/user/:userId` - Get user's games
-- `PUT /api/games/:id` - Update game
-- `POST /api/games/:id/end` - End game
-
-### Puzzles
-- `GET /api/puzzles/random` - Get random puzzle
-- `GET /api/puzzles/all` - Get all puzzles
-- `POST /api/puzzles/validate` - Validate puzzle solution
-- `POST /api/puzzles/create` - Create puzzle (admin)
-
-### Lessons
-- `GET /api/lessons` - Get all lessons
-- `GET /api/lessons/:id` - Get lesson by ID
-- `POST /api/lessons/:id/complete` - Mark lesson complete
-
-### Analysis
-- `POST /api/analysis/position` - Analyze position
-- `POST /api/analysis/best-move` - Get best move
-- `POST /api/analysis/top-moves` - Get top moves
-
-### Chatbot
-- `POST /api/chatbot/chat` - Chat with AI coach
-
-## 🎮 Socket.IO Events
-
-### Game Namespace (`/game`)
-- `joinRoom` - Join game room
-- `makeMove` - Make a chess move
-- `chatMessage` - Send chat message
-- `offerDraw` - Offer draw
-- `resign` - Resign game
-- `leaveRoom` - Leave game room
-
-### Matchmaking Namespace (`/matchmaking`)
-- `joinQueue` - Join matchmaking queue
-- `leaveQueue` - Leave matchmaking queue
-- `matchFound` - Match found (emitted by server)
-
-## 🎨 UI Features
-
-### Modern Design
-- **Dark Mode Theme**: Eye-friendly dark interface
-- **Glassmorphism**: Premium glass effects
-- **Smooth Animations**: Framer Motion transitions
-- **Responsive**: Mobile-first design
-- **Custom Chessboard**: Styled chess pieces and board
-
-### User Experience
-- **Real-time Updates**: Instant move synchronization
-- **Toast Notifications**: Clean feedback system
-- **Loading States**: Smooth loading indicators
-- **Form Validation**: Client & server validation
-
-## 📝 Default Accounts
-
-Create your first admin account:
-
-1. Register normally through the UI
-2. Access MongoDB and update user:
-   ```javascript
-   db.users.updateOne(
-     { email: "your@email.com" },
-     { $set: { isAdmin: true } }
-   )
-   ```
-
-## 🔧 Configuration
-
-### Backend (.env)
+**File `backend/.env`:**
 ```env
 PORT=5000
 MONGODB_URI=mongodb://localhost:27017/chess-platform
-JWT_SECRET=your_secret_key
-OPENAI_API_KEY=your_openai_key  # Optional
-FRONTEND_URL=http://localhost:3000
+JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+NODE_ENV=development
 ```
 
-### Frontend (.env.local)
+### 3. Cài Đặt Frontend
+
+```bash
+# Di chuyển vào thư mục frontend (từ root)
+cd ../frontend
+
+# Cài đặt dependencies
+npm install
+
+# Tạo file .env.local
+# Copy nội dung bên dưới vào file .env.local
+```
+
+**File `frontend/.env.local`:**
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:5000/api
 NEXT_PUBLIC_SOCKET_URL=http://localhost:5000
 ```
 
-## 🐛 Troubleshooting
+### 4. Khởi Động MongoDB
 
-### Backend won't start
-- Ensure MongoDB is running
-- Check .env file exists with correct values
-- Verify port 5000 is available
+**Trên Windows:**
+```bash
+# Mở terminal mới và chạy:
+mongod
+```
 
-### Frontend won't start
-- Ensure Node.js 18+ is installed
-- Clear node_modules and reinstall: `rm -rf node_modules && npm install`
-- Check .env.local exists
+**Trên Mac/Linux:**
+```bash
+# Khởi động MongoDB service
+sudo systemctl start mongod
+# hoặc
+brew services start mongodb-community
+```
 
-### Socket.IO not connecting
-- Verify backend is running
-- Check NEXT_PUBLIC_SOCKET_URL in .env.local
-- Check browser console for CORS errors
+### 5. Chạy Backend Server
 
-### AI Chatbot not working
-- Chatbot will use fallback responses if OPENAI_API_KEY is not set
-- Verify API key is correct in backend .env
-- Check OpenAI API credits/quota
+```bash
+# Trong thư mục backend
+npm run dev
+```
 
-## 📚 Project Structure
+Server sẽ chạy tại: `http://localhost:5000`
+
+### 6. Chạy Frontend Server
+
+```bash
+# Mở terminal mới, trong thư mục frontend
+npm run dev
+```
+
+Frontend sẽ chạy tại: `http://localhost:3000`
+
+---
+
+## 📂 Cấu Trúc Project
 
 ```
 chess-learning-platform/
 ├── backend/
 │   ├── src/
-│   │   ├── models/          # MongoDB schemas
-│   │   ├── controllers/     # Request handlers
-│   │   ├── routes/          # API routes
-│   │   ├── services/        # Business logic
-│   │   ├── socket/          # Socket.IO handlers
-│   │   ├── middleware/      # Express middleware
-│   │   └── server.js        # Entry point
+│   │   ├── config/         # Database config
+│   │   ├── controllers/    # API controllers
+│   │   ├── models/         # MongoDB models
+│   │   ├── routes/         # API routes
+│   │   ├── middleware/     # Auth middleware
+│   │   ├── sockets/        # Socket.IO handlers
+│   │   └── server.js       # Main backend file
 │   ├── package.json
 │   └── .env
 │
-└── frontend/
-    ├── src/
-    │   ├── app/             # Next.js pages
-    │   ├── components/      # React components
-    │   ├── lib/             # Utilities
-    │   └── styles/          # Global styles
-    ├── public/              # Static files
-    ├── package.json
-    └── .env.local
+├── frontend/
+│   ├── src/
+│   │   ├── app/           # Next.js pages (App Router)
+│   │   ├── components/    # React components
+│   │   └── lib/          # Utilities, API clients
+│   ├── package.json
+│   └── .env.local
+│
+└── README.md
 ```
-
-## 🎯 Future Enhancements
-
-- [ ] Time controls (blitz, rapid, classical)
-- [ ] Tournament system
-- [ ] Live streaming
-- [ ] Mobile app (React Native)
-- [ ] Chess variants (Chess960, etc.)
-- [ ] Advanced analytics dashboard
-- [ ] Social features (friends, clubs)
-- [ ] Email notifications
-- [ ] Two-factor authentication
-
-## 📄 License
-
-MIT License - feel free to use this project for learning or commercial purposes.
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## 📧 Support
-
-For issues or questions, please create an issue in the repository.
 
 ---
 
-**Happy Chess Playing! ♟️**
+## 🎮 Hướng Dẫn Sử Dụng
+
+### Đăng Ký / Đăng Nhập
+1. Truy cập `http://localhost:3000`
+2. Click "Get Started Free" để đăng ký tài khoản mới
+3. Hoặc "Sign In" nếu đã có tài khoản
+
+### Tính Năng Chính
+
+#### 🏠 Lobby (Sảnh Chờ)
+- **Play vs AI**: Chơi với Stockfish AI (levels 1-20)
+- **Quick Match**: Tìm đối thủ cùng trình độ
+- **Create Room**: Tạo phòng riêng và mời bạn bè
+
+#### 🧩 Puzzles
+- Giải các bài tập chiến thuật
+- Từ Mate in 1 đến các tình huống phức tạp
+
+#### 📚 Learn
+- Video lessons từ Grandmaster Yasser Seirawan
+- Khai cuộc, chiến thuật, cờ tàn
+
+#### 🔍 Analyze
+- Phân tích ván đấu với Stockfish engine
+- Xem nước đi tốt nhất
+- Đánh giá vị thế
+
+#### 🤖 Chess Bot
+- AI chatbot tư vấn chiến thuật
+- Hỏi đáp về cờ vua
+
+---
+
+## ⚙️ Scripts Hữu Ích
+
+### Backend
+```bash
+npm run dev          # Chạy development server với nodemon
+npm start            # Chạy production server
+```
+
+### Frontend
+```bash
+npm run dev          # Chạy development server
+npm run build        # Build cho production
+npm start            # Chạy production build
+npm run lint         # Kiểm tra code style
+```
+
+---
+
+## 🐛 Troubleshooting
+
+### Lỗi: MongoDB connection failed
+- ✅ Kiểm tra MongoDB đã chạy chưa: `mongod`
+- ✅ Kiểm tra `MONGODB_URI` trong `.env` đúng chưa
+
+### Lỗi: Port already in use
+```bash
+# Kill process đang dùng port 3000 (frontend)
+npx kill-port 3000
+
+# Kill process đang dùng port 5000 (backend)
+npx kill-port 5000
+```
+
+### Lỗi: CORS / Cannot connect to backend
+- ✅ Backend server có đang chạy không?
+- ✅ Kiểm tra `NEXT_PUBLIC_API_URL` trong `frontend/.env.local`
+- ✅ Clear browser cache và hard refresh (Ctrl + Shift + R)
+
+### Lỗi: Infinite refresh loop khi đăng nhập
+```bash
+# Xóa build cache và restart
+cd frontend
+rm -rf .next
+npm run dev
+```
+
+Sau đó clear localStorage trong browser:
+- F12 → Application → Local Storage → Clear
+
+---
+
+## 🔧 Cấu Hình Nâng Cao
+
+### Thay đổi Port
+
+**Backend** (`backend/.env`):
+```env
+PORT=5001  # Thay vì 5000
+```
+
+**Frontend** (`frontend/.env.local`):
+```env
+NEXT_PUBLIC_API_URL=http://localhost:5001/api
+NEXT_PUBLIC_SOCKET_URL=http://localhost:5001
+```
+
+### Truy cập từ thiết bị khác trong cùng mạng LAN
+
+1. Tìm IP của máy chủ:
+```bash
+# Windows
+ipconfig
+
+# Mac/Linux  
+ifconfig
+```
+
+2. Truy cập từ thiết bị khác:
+```
+http://<IP-cua-may-chu>:3000
+```
+
+Ví dụ: `http://192.168.1.100:3000`
+
+---
+
+## 📝 Notes
+
+- Development servers có **hot reload** - code thay đổi sẽ tự động cập nhật
+- MongoDB data được lưu ở `mongodb://localhost:27017/chess-platform`
+- JWT tokens hết hạn sau 7 ngày
+- Stockfish AI chạy qua API (backend gọi external service)
+
+---
+
+## 📞 Hỗ Trợ
+
+Nếu gặp vấn đề, hãy kiểm tra:
+1. Console logs (F12 trong browser)
+2. Backend terminal output
+3. MongoDB logs
+
+---
+
+## 🎯 Quick Start (TL;DR)
+
+```bash
+# Terminal 1 - MongoDB
+mongod
+
+# Terminal 2 - Backend
+cd backend
+npm install
+npm run dev
+
+# Terminal 3 - Frontend  
+cd frontend
+npm install
+npm run dev
+
+# Mở browser: http://localhost:3000
+```
+
+**Happy Coding! ♟️**
