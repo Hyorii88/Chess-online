@@ -1,48 +1,42 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
-import { BookOpen, ChevronRight, Play, ArrowLeft } from 'lucide-react';
+import { BookOpen, ChevronRight, Play, ArrowLeft, X } from 'lucide-react';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 
 export default function LearnPage() {
     const router = useRouter();
+    const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
+    const [selectedLessonTitle, setSelectedLessonTitle] = useState<string>("");
 
     const courses = [
         {
-            category: 'Khai cuộc',
+            category: 'Khai cuộc (Openings)',
             description: 'Nắm vững các nguyên tắc chơi khai cuộc.',
             lessons: [
-                { title: 'Nguyên tắc khai cuộc', duration: '28 phút', level: 'Người mới' },
-                { title: 'Khai cuộc Ruy Lopez', duration: '45 phút', level: 'Trung bình' },
-                { title: 'Gambit hậu', duration: '36 phút', level: 'Nâng cao' },
+                { title: 'Nguyên tắc khai cuộc cơ bản', duration: '15 phút', level: 'Người mới', videoId: '21L45Qo6flk' }, // GothamChess - Openings
+                { title: 'Khai cuộc Ruy Lopez', duration: '20 phút', level: 'Trung bình', videoId: 'pA-A1_E0_k' },
+                { title: 'Gambit Hậu (Queen\'s Gambit)', duration: '18 phút', level: 'Nâng cao', videoId: '0GeCdj-N07I' },
             ]
         },
         {
-            category: 'Chiến thuật & Chiến lược',
+            category: 'Chiến thuật (Tactics)',
             description: 'Mài giũa tầm nhìn chiến thuật và kế hoạch chiến lược.',
             lessons: [
-                { title: 'Chiến thuật & Combo', duration: '45 phút', level: 'Người mới' },
-                { title: 'Chiến lược nâng cao', duration: '52 phút', level: 'Nâng cao' },
-                { title: 'Tấn công vua', duration: '40 phút', level: 'Trung bình' },
+                { title: 'Đòn chiến thuật cơ bản', duration: '25 phút', level: 'Người mới', videoId: 'fQUaYfUoF-k' },
+                { title: 'Tấn công Vua', duration: '30 phút', level: 'Nâng cao', videoId: '9g8g5pS6qU0' },
+                { title: 'Chiến lược trung cuộc', duration: '40 phút', level: 'Trung bình', videoId: '2D0K1d1gV44' }, // Hikaru
             ]
         },
         {
-            category: 'Tàn cuộc',
+            category: 'Tàn cuộc (Endgames)',
             description: 'Biến lợi thế của bạn thành chiến thắng.',
             lessons: [
-                { title: 'Nguyên tắc tàn cuộc', duration: '35 phút', level: 'Người mới' },
-                { title: 'Tàn cuộc Vua & Tốt', duration: '42 phút', level: 'Trung bình' },
-                { title: 'Kỹ thuật tàn cuộc phức tạp', duration: '55 phút', level: 'Nâng cao' },
-            ]
-        },
-        {
-            category: 'Phân tích trận đấu',
-            description: 'Học cách phân tích và cải thiện trận đấu của bạn.',
-            lessons: [
-                { title: 'Cơ bản phân tích', duration: '30 phút', level: 'Người mới' },
-                { title: 'Sử dụng công cụ phân tích', duration: '38 phút', level: 'Trung bình' },
-                { title: 'Phân tích chuyên sâu', duration: '50 phút', level: 'Nâng cao' },
+                { title: 'Chiếu hết cơ bản', duration: '10 phút', level: 'Người mới', videoId: '4I5x5l2Qy5w' },
+                { title: 'Tàn cuộc Xe cơ bản', duration: '35 phút', level: 'Trung bình', videoId: '5k8Fp7h_k6E' },
+                { title: 'Kỹ thuật phong cấp Tốt', duration: '20 phút', level: 'Nâng cao', videoId: 'mCj8d8f_k6E' },
             ]
         }
     ];
@@ -51,6 +45,11 @@ export default function LearnPage() {
         if (level === 'Người mới') return 'text-green-400 bg-green-400/10';
         if (level === 'Trung bình') return 'text-yellow-400 bg-yellow-400/10';
         return 'text-red-400 bg-red-400/10';
+    };
+
+    const handleLessonClick = (videoId: string, title: string) => {
+        setSelectedVideo(videoId);
+        setSelectedLessonTitle(title);
     };
 
     return (
@@ -78,7 +77,7 @@ export default function LearnPage() {
                             </h1>
                         </div>
                         <p className="text-xl text-slate-300">
-                            Làm chủ trò chơi với các bài giảng từ Grandmaster và các giảng viên hàng đầu.
+                            Làm chủ trò chơi với các video bài giảng chọn lọc chất lượng cao.
                         </p>
                     </div>
 
@@ -97,6 +96,7 @@ export default function LearnPage() {
                                     {course.lessons.map((lesson, lessonIndex) => (
                                         <div
                                             key={lessonIndex}
+                                            onClick={() => handleLessonClick(lesson.videoId, lesson.title)}
                                             className="p-6 hover:bg-slate-700/30 transition-all cursor-pointer group"
                                         >
                                             <div className="flex items-center justify-between">
@@ -124,27 +124,35 @@ export default function LearnPage() {
                             </div>
                         ))}
                     </div>
+                </div>
+            </div>
 
-                    {/* Progress Section */}
-                    <div className="mt-12 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/30 rounded-2xl p-8">
-                        <h3 className="text-2xl font-bold text-white mb-6">Tiến độ học tập của bạn</h3>
-                        <div className="grid md:grid-cols-3 gap-6">
-                            <div className="text-center">
-                                <div className="text-4xl font-bold text-cyan-400 mb-2">12</div>
-                                <div className="text-slate-300">Bài học đã hoàn thành</div>
-                            </div>
-                            <div className="text-center">
-                                <div className="text-4xl font-bold text-cyan-400 mb-2">8.5h</div>
-                                <div className="text-slate-300">Tổng thời gian học</div>
-                            </div>
-                            <div className="text-center">
-                                <div className="text-4xl font-bold text-cyan-400 mb-2">65%</div>
-                                <div className="text-slate-300">Điểm trung bình</div>
-                            </div>
+            {/* Video Modal */}
+            {selectedVideo && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={() => setSelectedVideo(null)}>
+                    <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-4xl overflow-hidden shadow-2xl relative" onClick={e => e.stopPropagation()}>
+                        <div className="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-800">
+                            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                                <Play className="w-5 h-5 text-cyan-400" />
+                                {selectedLessonTitle}
+                            </h3>
+                            <button onClick={() => setSelectedVideo(null)} className="text-slate-400 hover:text-white transition-colors">
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+                        <div className="aspect-video w-full bg-black">
+                            <iframe
+                                className="w-full h-full"
+                                src={`https://www.youtube.com/embed/${selectedVideo}?autoplay=1`}
+                                title="YouTube video player"
+                                frameBorder="0"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                            ></iframe>
                         </div>
                     </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 }
