@@ -28,7 +28,7 @@ const userSchema = new mongoose.Schema({
     },
     elo: {
         type: Number,
-        default: 1200
+        default: 1500
     },
     rating: {
         type: Number,

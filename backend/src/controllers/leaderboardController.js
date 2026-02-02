@@ -5,8 +5,8 @@ export const getLeaderboard = async (req, res) => {
         const limit = parseInt(req.query.limit) || 50;
 
         const leaderboard = await User.find()
-            .select('username rating gamesPlayed wins losses draws avatar')
-            .sort({ rating: -1 })
+            .select('username elo rating gamesPlayed wins losses draws avatar')
+            .sort({ elo: -1 }) // Sort by ELO, not rating
             .limit(limit);
 
         res.json(leaderboard);

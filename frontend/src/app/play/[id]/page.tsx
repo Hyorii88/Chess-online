@@ -40,8 +40,10 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
     const [gameWinner, setGameWinner] = useState<string | null>(null); // 'white', 'black', or 'draw'
     const [gameEndReason, setGameEndReason] = useState<string | null>(null);
 
+    const [disconnectTimer, setDisconnectTimer] = useState<number | null>(null);
+
     useEffect(() => {
-        // Wait for auth to finish loading before redirecting
+        // ... (existing auth check)
         if (loading) return;
 
         if (!isAuthenticated) {
@@ -52,6 +54,7 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
         // Connect to game socket
         const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000';
         const newSocket = io(`${socketUrl}/game`);
+        let timerInterval: NodeJS.Timeout;
 
         newSocket.on('connect', () => {
             console.log('Connected to game socket');
@@ -65,12 +68,17 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
         });
 
         newSocket.on('playerJoined', (data) => {
-            console.log('🎨 PLAYER JOINED EVENT:', {
-                assignedColor: data.color,
-                type: typeof data.color
-            });
+            console.log('🎨 PLAYER JOINED EVENT:', data);
             setPlayerColor(data.color);
-            console.log('✅ Player color SET TO:', data.color);
+
+            // IMMEDIATE OPPONENT UPDATE: Check players array
+            if (data.players && Array.isArray(data.players)) {
+                const opp = data.players.find((p: any) => p.userId !== user?.id);
+                if (opp) {
+                    setOpponent(opp);
+                    console.log('✅ Opponent found in playerJoined:', opp.username);
+                }
+            }
 
             const newGame = new Chess();
 
@@ -94,7 +102,9 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
             if (data.players && data.players.length === 2) {
                 const opp = data.players.find((p: any) => p.userId !== user?.id);
                 setOpponent(opp);
-                toast.success('Opponent joined!');
+                // Also clear timer if full room (implicit reconnect)
+                if (disconnectTimer) setDisconnectTimer(null);
+                clearInterval(timerInterval);
             }
         });
 
@@ -187,36 +197,90 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
         });
 
         newSocket.on('gameEnded', (data) => {
-            toast.success(`Game ended: ${data.result}`);
-            // Force update local game state if not already recognized
-            if (!game.isGameOver()) {
-                const newGame = new Chess(game.fen());
-                // Set header or some property to force re-render if needed, 
-                // but usually isGameOver is derived from FEN. 
-                // If server says game ended but local FEN doesn't show it (e.g. resignation),
-                // we might need a specific state. 
-                // For now, reliance on FEN sync from 'moveMade' should be enough for checkmate.
-                // For resignation/draw, we might need a separate 'gameOver' state.
-            }
-        });
+            console.log('🏁 GAME ENDED EVENT:', data);
 
-        newSocket.on('playerDisconnected', () => {
-            toast.error('Opponent disconnected');
+            // Force update local game state
+            setIsGameOver(true);
+            setGameWinner(data.result);
+            setGameEndReason(data.reason);
+
+            // Auto-redirect to lobby after 10 seconds
+            setTimeout(() => {
+                router.push('/lobby');
+            }, 10000);
+
+            if (data.isWinner === true) {
+                toast.success('🎉 You won! Opponent resigned/abandoned.', { duration: 5000 });
+                setShowConfetti(true);
+                setTimeout(() => setShowConfetti(false), 5000);
+            } else if (data.isWinner === false) {
+                if (data.reason === 'resignation') toast.error('🏳️ You resigned.', { duration: 5000 });
+                else if (data.reason === 'abandonment') toast.error('⏱️ You abandoned the match.', { duration: 5000 });
+                else toast.error('💔 You lost.', { duration: 5000 });
+            } else {
+                if (data.result === 'draw') toast('🤝 Game ended in a draw.', { duration: 5000 });
+                else toast(`🏁 Game over: ${data.result} won (${data.reason})`, { duration: 5000 });
+            }
         });
 
         newSocket.on('invalidMove', (data: { error: string }) => {
             toast.error(data.error);
             console.error('Server rejected move:', data.error);
-            // Request full sync if needed, but backend already sends playerJoined which resyncs
         });
+
+        newSocket.on('drawOffered', ({ username }) => {
+            setDrawOfferedBy(username);
+            toast(`${username} offered a draw!`, { icon: '🤝' });
+        });
+
+        newSocket.on('drawDeclined', ({ username }) => {
+            toast.error(`${username} declined the draw.`);
+        });
+
+        // ... existing listeners ...
+
+        newSocket.on('playerDisconnected', (data) => {
+            if (data.message) {
+                toast.error(data.message, { duration: 5000 });
+            }
+            if (data.timeout) {
+                setDisconnectTimer(data.timeout / 1000); // Set seconds
+                clearInterval(timerInterval);
+                timerInterval = setInterval(() => {
+                    setDisconnectTimer((prev) => {
+                        if (prev === null || prev <= 0) {
+                            clearInterval(timerInterval);
+                            return 0;
+                        }
+                        return prev - 1;
+                    });
+                }, 1000);
+            }
+        });
+
+        newSocket.on('playerReconnected', (data) => {
+            toast.success(`Player ${data.username} reconnected!`);
+            setDisconnectTimer(null);
+            clearInterval(timerInterval);
+
+            // Update opponent status if needed
+            if (data.players) {
+                const opp = data.players.find((p: any) => p.userId !== user?.id);
+                if (opp) setOpponent(opp);
+            }
+        });
+
+        // ... (rest of handlers)
 
         setSocket(newSocket);
 
         return () => {
+            clearInterval(timerInterval);
             newSocket.emit('leaveRoom', { roomId: gameId, userId: user?.id });
             newSocket.close();
         };
-    }, [gameId, isAuthenticated, loading, router]);
+    }, [gameId, isAuthenticated, loading, router]); // Remove user dependency to avoid reconnect loops logic if user object changes slightly
+
 
     const makeAIMove = async (currentGame: Chess) => {
         setThinking(true);
@@ -251,6 +315,28 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
 
     const [moveFrom, setMoveFrom] = useState('');
     const [optionSquares, setOptionSquares] = useState({});
+    const [timeLeft, setTimeLeft] = useState(10);
+
+    // Reset timer on turn change
+    useEffect(() => {
+        setTimeLeft(10);
+    }, [game]); // game object changes on every move
+
+    // Countdown effect
+    useEffect(() => {
+        if (isGameOver) return;
+
+        const timer = setInterval(() => {
+            setTimeLeft((prev) => {
+                if (prev <= 0) return 0;
+                return prev - 1;
+            });
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [isGameOver, game]); // Restart interval on game change to keep strict sync? Or just let it run.
+    // Actually, if we reset on [game], we just need interval to run.
+
 
     function getMoveOptions(square: string) {
         const moves = game.moves({
@@ -404,11 +490,14 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
         }
     };
 
+    const [drawOfferedBy, setDrawOfferedBy] = useState<string | null>(null);
+
+    // ... existing handlers ...
+
     const handleResign = () => {
         if (socket) {
+            // Just emit event, let the server 'gameEnded' response handle the UI/Redirect
             socket.emit('resign', { roomId: gameId, userId: user?.id });
-            toast.success('You resigned');
-            router.push('/lobby');
         }
     };
 
@@ -416,6 +505,20 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
         if (socket) {
             socket.emit('offerDraw', { roomId: gameId, username: user?.username });
             toast.success('Draw offer sent');
+        }
+    };
+
+    const handleAcceptDraw = () => {
+        if (socket) {
+            socket.emit('acceptDraw', { roomId: gameId });
+            setDrawOfferedBy(null);
+        }
+    };
+
+    const handleDeclineDraw = () => {
+        if (socket) {
+            socket.emit('declineDraw', { roomId: gameId, username: user?.username });
+            setDrawOfferedBy(null);
         }
     };
 
@@ -475,6 +578,7 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
                                                 ) : (
                                                     opponent?.username || 'Waiting for opponent...'
                                                 )}
+                                                {opponent?.elo && <span className="text-sm text-gray-400 font-normal">({opponent.elo})</span>}
                                             </div>
                                             <div className="text-sm text-gray-400">
                                                 {playerColor === 'white' ? 'Black' : 'White'}
@@ -487,10 +591,47 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
                                             Thinking...
                                         </div>
                                     )}
+                                    {/* Opponent Timer */}
+                                    <div className={`text-2xl font-mono font-bold ${game.turn() !== playerColor[0] ? 'text-white animate-pulse' : 'text-gray-600'}`}>
+                                        {game.turn() !== playerColor[0] ? `00:${timeLeft.toString().padStart(2, '0')}` : '00:10'}
+                                    </div>
                                 </div>
 
                                 {/* Chessboard */}
-                                <div className="flex justify-center bg-dark-900/50 p-4 rounded-lg">
+                                <div className="flex justify-center bg-dark-900/50 p-4 rounded-lg relative">
+                                    {/* Draw Offer Modal */}
+                                    {drawOfferedBy && (
+                                        <div className="absolute inset-0 z-20 bg-black/70 backdrop-blur-sm flex items-center justify-center rounded-lg">
+                                            <div className="text-center p-6 bg-dark-800 rounded-xl border border-primary-500 shadow-2xl animate-fade-in-up">
+                                                <div className="text-2xl font-bold text-white mb-2">🤝 Draw Offered</div>
+                                                <div className="text-gray-300 mb-6">{drawOfferedBy} wants to draw the game.</div>
+                                                <div className="flex gap-3 justify-center">
+                                                    <button
+                                                        onClick={handleAcceptDraw}
+                                                        className="px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg text-white font-bold transition-colors"
+                                                    >
+                                                        Accept
+                                                    </button>
+                                                    <button
+                                                        onClick={handleDeclineDraw}
+                                                        className="px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg text-white font-bold transition-colors"
+                                                    >
+                                                        Decline
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {/* Disconnect Timer Overlay */}
+                                    {disconnectTimer !== null && (
+                                        <div className="absolute inset-0 z-10 bg-black/60 backdrop-blur-sm flex items-center justify-center rounded-lg">
+                                            <div className="text-center p-6 bg-dark-800 rounded-xl border border-red-500 shadow-2xl animate-pulse">
+                                                <div className="text-4xl font-bold text-red-500 mb-2">{disconnectTimer}s</div>
+                                                <div className="text-gray-300 font-medium">Opponent disconnected</div>
+                                                <div className="text-sm text-gray-400 mt-2">Auto-forfeit in progress...</div>
+                                            </div>
+                                        </div>
+                                    )}
                                     <div className="chess-board w-full max-w-[600px] aspect-square">
                                         <Chessboard
                                             position={game.fen()}
@@ -521,7 +662,11 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="text-sm font-semibold">
+                                    <div className="text-sm font-semibold flex items-center gap-4">
+                                        {/* User Timer */}
+                                        <div className={`text-2xl font-mono font-bold ${game.turn() === playerColor[0] ? 'text-white animate-pulse' : 'text-gray-600'}`}>
+                                            {game.turn() === playerColor[0] ? `00:${timeLeft.toString().padStart(2, '0')}` : '00:10'}
+                                        </div>
                                         {game.turn() === playerColor[0] ? (
                                             <span className="text-green-400">Your turn</span>
                                         ) : (
@@ -660,11 +805,12 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
                                 </div>
                             )}
 
-                            {/* Title */}
                             <h2 className="text-5xl md:text-6xl font-bold mb-4">
-                                {game.isCheckmate() ? (
+                                {gameWinner === 'draw' ? (
+                                    <span className="gradient-text">Draw</span>
+                                ) : gameWinner ? (
                                     <span className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 bg-clip-text text-transparent">
-                                        Victory!
+                                        {gameWinner === playerColor ? 'Victory!' : 'Defeat'}
                                     </span>
                                 ) : (
                                     <span className="gradient-text">Draw</span>
@@ -673,13 +819,34 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
 
                             {/* Winner Information */}
                             <div className="mb-8">
-                                {game.isCheckmate() ? (
+                                {gameEndReason === 'resignation' || gameEndReason === 'abandonment' ? (
+                                    <div className="space-y-4">
+                                        <div className="flex flex-col items-center justify-center gap-4">
+                                            {gameWinner === playerColor ? (
+                                                <>
+                                                    <p className="text-2xl text-green-400 font-bold">You Won!</p>
+                                                    <p className="text-xl text-gray-300">
+                                                        Opponent {gameEndReason === 'resignation' ? 'Resigned' : 'Abandoned'}
+                                                    </p>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <p className="text-2xl text-red-400 font-bold">You Lost</p>
+                                                    <p className="text-xl text-gray-300">
+                                                        You {gameEndReason === 'resignation' ? 'Resigned' : 'Abandoned'}
+                                                    </p>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                ) : game.isCheckmate() ? (
                                     <div className="space-y-4">
                                         <div className="flex items-center justify-center gap-4">
                                             <img
                                                 src={
-                                                    (game.turn() === 'w' ? (playerColor === 'black' ? user?.avatar : opponent?.avatar || mode === 'ai' ? 'https://api.dicebear.com/7.x/bottts/svg?seed=ai' : user?.avatar)
-                                                        : (playerColor === 'white' ? user?.avatar : opponent?.avatar || mode === 'ai' ? 'https://api.dicebear.com/7.x/bottts/svg?seed=ai' : user?.avatar))
+                                                    game.turn() === 'w' ?
+                                                        (playerColor === 'black' ? user?.avatar : opponent?.avatar || (mode === 'ai' ? 'https://api.dicebear.com/7.x/bottts/svg?seed=ai' : 'https://api.dicebear.com/7.x/avataaars/svg?seed=opponent'))
+                                                        : (playerColor === 'white' ? user?.avatar : opponent?.avatar || (mode === 'ai' ? 'https://api.dicebear.com/7.x/bottts/svg?seed=ai' : 'https://api.dicebear.com/7.x/avataaars/svg?seed=opponent'))
                                                 }
                                                 alt="Winner"
                                                 className="w-20 h-20 rounded-full border-4 border-yellow-400 shadow-xl"

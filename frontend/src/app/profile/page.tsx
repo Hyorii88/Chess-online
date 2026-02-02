@@ -6,25 +6,60 @@ import { useAuth } from '@/lib/AuthContext';
 import { FaUser, FaTrophy, FaChartLine, FaClock, FaPuzzlePiece, FaFire, FaCalendar, FaEdit, FaMedal, FaCrown, FaStar, FaChess } from 'react-icons/fa';
 
 export default function ProfilePage() {
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
     const [isEditing, setIsEditing] = useState(false);
     const [activeTab, setActiveTab] = useState('overview');
+    const [stats, setStats] = useState<any>({
+        totalGames: 0,
+        wins: 0,
+        losses: 0,
+        draws: 0,
+        winRate: 0,
+        currentStreak: 0,
+        longestStreak: 0,
+        puzzlesSolved: 0,
+        puzzleAccuracy: 0,
+        rapidRating: 1500,
+        blitzRating: 1500,
+        bulletRating: 1500,
+    });
+    const [loading, setLoading] = useState(true);
 
-    // Mock data - in production, this would come from API
-    const stats = {
-        totalGames: 147,
-        wins: 82,
-        losses: 51,
-        draws: 14,
-        winRate: 55.8,
-        currentStreak: 5,
-        longestStreak: 12,
-        puzzlesSolved: 324,
-        puzzleAccuracy: 87.3,
-        rapidRating: user?.elo || 1500,
-        blitzRating: 1450,
-        bulletRating: 1380,
-    };
+    React.useEffect(() => {
+        const fetchStats = async () => {
+            if (!user?.id) return;
+            try {
+                // Fetch fresh user data
+                const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/user/stats/${user.id}`);
+                const data = await response.json();
+
+                if (data) {
+                    setStats({
+                        totalGames: data.gamesPlayed || 0,
+                        wins: data.wins || 0,
+                        losses: data.losses || 0,
+                        draws: data.draws || 0,
+                        winRate: data.winRate || 0, // Backend might calculate this
+                        currentStreak: data.currentStreak || 0,
+                        longestStreak: data.longestStreak || 0,
+                        puzzlesSolved: data.puzzlesSolved || 0,
+                        puzzleAccuracy: data.puzzleAccuracy || 0,
+                        rapidRating: data.elo || 1500, // Using main elo for rapid
+                        blitzRating: data.blitzElo || 1500,
+                        bulletRating: data.bulletElo || 1500,
+                    });
+                }
+            } catch (error) {
+                console.error("Error fetching stats:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        if (user) fetchStats();
+        else if (!authLoading) setLoading(false);
+
+    }, [user, authLoading]);
 
     const recentGames = [
         { id: 1, opponent: 'Grandmaster99', result: 'win', timeControl: 'Rapid 10+0', date: '2026-01-29', myColor: 'white' },
@@ -119,8 +154,8 @@ export default function ProfilePage() {
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
                                 className={`px-6 py-3 rounded-lg font-semibold capitalize transition-all whitespace-nowrap ${activeTab === tab
-                                        ? 'bg-primary-600 text-white'
-                                        : 'bg-dark-800 text-gray-400 hover:bg-dark-700'
+                                    ? 'bg-primary-600 text-white'
+                                    : 'bg-dark-800 text-gray-400 hover:bg-dark-700'
                                     }`}
                             >
                                 {tab}
@@ -266,8 +301,8 @@ export default function ProfilePage() {
                                     >
                                         <div className="flex items-center gap-4">
                                             <div className={`w-12 h-12 rounded-lg flex items-center justify-center font-bold text-xl ${game.result === 'win' ? 'bg-green-500/20 text-green-400' :
-                                                    game.result === 'loss' ? 'bg-red-500/20 text-red-400' :
-                                                        'bg-gray-500/20 text-gray-400'
+                                                game.result === 'loss' ? 'bg-red-500/20 text-red-400' :
+                                                    'bg-gray-500/20 text-gray-400'
                                                 }`}>
                                                 {game.result === 'win' ? 'W' : game.result === 'loss' ? 'L' : 'D'}
                                             </div>
@@ -292,13 +327,13 @@ export default function ProfilePage() {
                                 <div
                                     key={achievement.id}
                                     className={`card p-6 transition-all ${achievement.unlocked
-                                            ? 'border-2 border-yellow-500/50 shadow-lg shadow-yellow-500/20'
-                                            : 'opacity-50 grayscale'
+                                        ? 'border-2 border-yellow-500/50 shadow-lg shadow-yellow-500/20'
+                                        : 'opacity-50 grayscale'
                                         }`}
                                 >
                                     <div className={`w-16 h-16 rounded-full flex items-center justify-center text-3xl mb-4 mx-auto ${achievement.unlocked
-                                            ? 'bg-gradient-to-br from-yellow-500 to-orange-500 text-white'
-                                            : 'bg-dark-800 text-gray-600'
+                                        ? 'bg-gradient-to-br from-yellow-500 to-orange-500 text-white'
+                                        : 'bg-dark-800 text-gray-600'
                                         }`}>
                                         {achievement.icon}
                                     </div>

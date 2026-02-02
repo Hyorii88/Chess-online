@@ -8,8 +8,39 @@ export const initializeMatchmakingSocket = (io) => {
         console.log(`Matchmaking socket connected: ${socket.id}`);
 
         // Join matchmaking queue
-        socket.on('joinQueue', ({ userId, username, elo }) => {
+        socket.on('joinQueue', async ({ userId, username, elo }) => {
             console.log(`Join request from: ${username} (${userId})`);
+
+            // Check for existing active game in DB
+            try {
+                const { default: Game } = await import('../models/Game.js');
+
+                // Find latest game for this user
+                const activeGame = await Game.findOne({
+                    $or: [{ white: userId }, { black: userId }]
+                }).sort({ createdAt: -1 }).populate('white').populate('black');
+
+                // Check if it's ongoing
+                if (activeGame && (!activeGame.result || activeGame.result === 'ongoing')) {
+                    console.log(`♻️ Found active game ${activeGame._id} for ${username}. Redirecting...`);
+
+                    const isWhite = activeGame.white._id.toString() === userId;
+
+                    socket.emit('matchFound', {
+                        roomId: activeGame._id.toString(),
+                        white: activeGame.white,
+                        black: activeGame.black,
+                        yourColor: isWhite ? 'white' : 'black',
+                        opponent: isWhite ? activeGame.black : activeGame.white,
+                        reconnect: true
+                    });
+                    return;
+                }
+            } catch (error) {
+                console.error('Error checking for active games:', error);
+            }
+
+
 
             // Check if user already in queue
             const existingIndex = matchmakingQueue.findIndex(p => p.userId === userId);

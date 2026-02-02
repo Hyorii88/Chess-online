@@ -47,6 +47,15 @@ function calculateRatingChanges(whiteRating, blackRating, result) {
     const currentWhite = typeof whiteRating === 'number' ? whiteRating : 1500;
     const currentBlack = typeof blackRating === 'number' ? blackRating : 1500;
 
+    if (result === 'draw') {
+        return {
+            whiteNewRating: currentWhite,
+            blackNewRating: currentBlack,
+            whiteChange: 0,
+            blackChange: 0
+        };
+    }
+
     const whiteNewRating = calculateNewRating(currentWhite, whiteExpected, whiteActual);
     const blackNewRating = calculateNewRating(currentBlack, blackExpected, blackActual);
 

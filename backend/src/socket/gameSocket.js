@@ -3,160 +3,227 @@ import { Chess } from 'chess.js';
 // Store active game rooms
 const gameRooms = new Map();
 
+// Helper to start move timer
+function startMoveTimer(roomId, turnColor, gameNamespace) {
+    const room = gameRooms.get(roomId);
+    if (!room) return;
+
+    if (room.moveTimer) clearTimeout(room.moveTimer);
+
+    room.moveTimer = setTimeout(() => {
+        if (gameRooms.has(roomId)) {
+            const currentRoom = gameRooms.get(roomId);
+            if (currentRoom.chess.turn() === (turnColor === 'white' ? 'w' : 'b')) {
+                const winnerColor = turnColor === 'white' ? 'black' : 'white';
+                console.log(`⏰ Timeout! ${turnColor} lost by time.`);
+                handleGameEnd(roomId, winnerColor, 'timeout', gameNamespace);
+            }
+        }
+    }, 10000);
+}
+
+// Helper to handle game end (DB + ELO + Room Cleanup)
+async function handleGameEnd(roomId, result, endReason, gameNamespace) {
+    const room = gameRooms.get(roomId);
+    if (!room) return;
+
+    if (room.moveTimer) clearTimeout(room.moveTimer);
+
+
+    console.log(`🏁 Game Over in ${roomId}. Result: ${result}, Reason: ${endReason}`);
+
+    // Emit Game Over Event
+    // If specific winner logic needed for UI, we calculate it here
+    room.players.forEach(player => {
+        const isWinner = player.color === result;
+        gameNamespace.to(player.socketId).emit('gameEnded', {
+            result,
+            reason: endReason,
+            isWinner // Helpful for UI
+        });
+    });
+
+    // DB Update & ELO
+    try {
+        const { default: Game } = await import('../models/Game.js');
+        const { default: User } = await import('../models/User.js');
+        const { calculateRatingChanges } = await import('../utils/eloCalculator.js');
+
+        const gameDoc = await Game.findById(roomId);
+        if (gameDoc && gameDoc.result === 'ongoing') { // Only if not already finished
+            const updateData = {
+                $set: {
+                    result: result,
+                    endReason: endReason,
+                    completedAt: new Date(),
+                    fen: room.chess.fen(),
+                    pgn: room.chess.pgn()
+                }
+            };
+
+            // ELO Calculation
+            if (gameDoc.white && gameDoc.black) {
+                const whitePlayer = await User.findById(gameDoc.white);
+                const blackPlayer = await User.findById(gameDoc.black);
+
+                if (whitePlayer && blackPlayer) {
+                    const ratingChanges = calculateRatingChanges(
+                        whitePlayer.rating,
+                        blackPlayer.rating,
+                        result
+                    );
+
+                    // Update White
+                    await User.findByIdAndUpdate(whitePlayer._id, {
+                        rating: ratingChanges.whiteNewRating,
+                        elo: ratingChanges.whiteNewRating,
+                        $inc: {
+                            gamesPlayed: 1,
+                            wins: result === 'white' ? 1 : 0,
+                            losses: result === 'black' ? 1 : 0,
+                            draws: result === 'draw' ? 1 : 0
+                        }
+                    });
+
+                    // Update Black
+                    await User.findByIdAndUpdate(blackPlayer._id, {
+                        rating: ratingChanges.blackNewRating,
+                        elo: ratingChanges.blackNewRating,
+                        $inc: {
+                            gamesPlayed: 1,
+                            wins: result === 'black' ? 1 : 0,
+                            losses: result === 'white' ? 1 : 0,
+                            draws: result === 'draw' ? 1 : 0
+                        }
+                    });
+
+                    // Snapshot ratings
+                    updateData.$set.whiteRatingBefore = whitePlayer.rating;
+                    updateData.$set.whiteRatingAfter = ratingChanges.whiteNewRating;
+                    updateData.$set.whiteRatingChange = ratingChanges.whiteChange;
+                    updateData.$set.blackRatingBefore = blackPlayer.rating;
+                    updateData.$set.blackRatingAfter = ratingChanges.blackNewRating;
+                    updateData.$set.blackRatingChange = ratingChanges.blackChange;
+
+                    console.log(`Ratings updated: White ${whitePlayer.rating}->${ratingChanges.whiteNewRating}, Black ${blackPlayer.rating}->${ratingChanges.blackNewRating}`);
+
+                    // Notify players of ELO change
+                    room.players.forEach(p => {
+                        if (p.isOnline) {
+                            const newRating = p.color === 'white' ? ratingChanges.whiteNewRating : ratingChanges.blackNewRating;
+                            const oldRating = p.color === 'white' ? whitePlayer.rating : blackPlayer.rating;
+                            gameNamespace.to(p.socketId).emit('ratingUpdate', {
+                                oldRating,
+                                newRating,
+                                change: newRating - oldRating
+                            });
+                        }
+                    });
+                }
+            }
+
+            await Game.findByIdAndUpdate(roomId, updateData);
+        }
+    } catch (e) {
+        console.error('Error in handleGameEnd persistence:', e);
+    }
+
+    // Cleanup room (delayed to allow analysis/chat for a bit, or immediate?)
+    // User requested "one side resigned, other stays".
+    // We should NOT delete the room immediately if users are still there?
+    // BUT user said "when searching for new match, it goes back to old one".
+    // Use clear logic: The room remains in memory for chat/analysis, BUT database says 'completed'.
+    // Matchmaking checks DB. Since DB is 'completed', matchmaking will create NEW game. OK.
+
+    // We can keep the room in memory for a while.
+    // gameRooms.delete(roomId); // Do NOT delete immediately so players can chat?
+    // Actually, if we don't delete, re-join logic might still catch it? 
+    // joinRoom checks gameRooms.has(roomId).
+    // If user reloads, joinRoom finds memory room. 
+    // BUT Matchmaking creates NEW roomId. So that's fine.
+    // ONLY issue is if "Quick Match" tries to reconnect to ongoing games.
+    // The "reconnect" logic in matchmakingSocket checks for 'ongoing'.
+    // Since we set DB to result!=ongoing, matchmaking WON'T redirect here.
+    // So safe to keep room in memory.
+}
+
 export const initializeGameSocket = (io) => {
     const gameNamespace = io.of('/game');
 
     gameNamespace.on('connection', (socket) => {
+        // ... (connection logic remains same)
         console.log(`Game socket connected: ${socket.id}`);
 
-        // Join a game room
         socket.on('joinRoom', async ({ roomId, userId, username }) => {
+            // ... (keep existing joinRoom logic up to catch)
             socket.join(roomId);
-
             try {
                 if (!gameRooms.has(roomId)) {
-                    // Try to load from DB first
                     const { default: Game } = await import('../models/Game.js');
                     const gameFromDb = await Game.findById(roomId);
-
                     const chess = new Chess();
-                    let players = [];
-
                     if (gameFromDb) {
                         try {
-                            if (gameFromDb.pgn) {
-                                chess.loadPgn(gameFromDb.pgn);
-                            } else if (gameFromDb.fen) {
-                                chess.load(gameFromDb.fen);
-                            }
-                        } catch (e) {
-                            console.error(`❌ Error loading state from DB for ${roomId}:`, e);
-                            if (gameFromDb.fen) chess.load(gameFromDb.fen);
-                        }
-
-                        // We might want to restore players/colors too if strictly tracked,
-                        // but for now we rely on the Join logic to re-assign based on userId.
-                        // However, strictly speaking, we don't store "who was white" in the Game model 
-                        // in a way that maps easily back to "active socket players" without `white` and `black` fields.
-                        // The Game model HAS `white` and `black` (ObjectIds).
-                        // Let's populate local players from DB data if possible or just let them rejoin.
+                            if (gameFromDb.pgn) chess.loadPgn(gameFromDb.pgn);
+                            else if (gameFromDb.fen) chess.load(gameFromDb.fen);
+                        } catch (e) { console.error(e); if (gameFromDb.fen) chess.load(gameFromDb.fen); }
                     }
-
-                    gameRooms.set(roomId, {
-                        players: [], // active players will re-register below
-                        chess: chess,
-                        spectators: []
-                    });
-                    console.log(`Room ${roomId} loaded from ${gameFromDb ? 'DB' : 'Scratch'}`);
+                    gameRooms.set(roomId, { players: [], chess, spectators: [] });
                 }
-
                 const room = gameRooms.get(roomId);
-
-                // Add player if not already in room
                 const existingPlayer = room.players.find(p => p.userId === userId);
 
                 if (existingPlayer) {
-                    // Player reconnecting: Update socket ID
-                    console.log(`🔄 Player ${username} reconnected to room ${roomId}`);
+                    if (existingPlayer.disconnectTimeout) {
+                        clearTimeout(existingPlayer.disconnectTimeout); existingPlayer.disconnectTimeout = null;
+                    }
                     existingPlayer.socketId = socket.id;
                     existingPlayer.isOnline = true;
-
-                    socket.emit('playerJoined', {
-                        color: existingPlayer.color,
-                        fen: room.chess.fen(),
-                        pgn: room.chess.pgn(),
-                        players: room.players
-                    });
-
-                    gameNamespace.to(roomId).emit('roomUpdate', {
-                        players: room.players,
-                        spectators: room.spectators.length
-                    });
+                    socket.emit('playerJoined', { color: existingPlayer.color, fen: room.chess.fen(), pgn: room.chess.pgn(), players: room.players.map(p => ({ ...p, disconnectTimeout: undefined })) });
+                    gameNamespace.to(roomId).emit('playerReconnected', { username: existingPlayer.username, players: room.players.map(p => ({ ...p, disconnectTimeout: undefined })) });
                 } else if (room.players.length < 2) {
-                    // New player joining - Check against DB for Color assignment if possible?
-                    // Ideally we should check if this userId matches white/black in DB to assign correct color.
-                    // For now, simpler queue logic (first come first served) or basic re-join.
-                    // Improving: Check if gameFromDb was loaded (we don't have it here easily without re-query or storing in room).
-                    // Let's do a quick check if we can improve persistence of "who is who".
-                    // But for now, let's keep the existing color logic but ensure we don't double-assign if DB has info? 
-                    // Actually, the current logic is: if room has < 2 players, add. 
-                    // If the server restarted, room.players is empty. 
-                    // The first person to recombine gets White. 
-                    // THIS IS A POTENTIAL BUG if Black reconnects first!
-
-                    // QUICK FIX: When loading from DB, better store the white/black IDs in the room object 
-                    // so we can assign correctly.
-                    // Updating the `if (!gameRooms.has(roomId))` block above to match this.
-
-                    // We need to fetch Game again or pass it down. 
-                    // I will do a fetch here to be safe and correct.
                     const { default: Game } = await import('../models/Game.js');
                     const gameFromDb = await Game.findById(roomId);
-
                     let color = 'white';
-                    if (gameFromDb) {
-                        if (gameFromDb.white.toString() === userId) color = 'white';
-                        else if (gameFromDb.black.toString() === userId) color = 'black';
-                        else color = room.players.length === 0 ? 'white' : 'black';
-                    } else {
-                        color = room.players.length === 0 ? 'white' : 'black';
-                    }
+                    if (gameFromDb && gameFromDb.white && gameFromDb.white.toString() === userId) color = 'white';
+                    else if (gameFromDb && gameFromDb.black && gameFromDb.black.toString() === userId) color = 'black';
+                    else color = room.players.length === 0 ? 'white' : 'black';
 
-                    room.players.push({ socketId: socket.id, userId, username, color });
+                    const { default: User } = await import('../models/User.js');
+                    const userDoc = await User.findById(userId);
+                    const elo = userDoc ? userDoc.elo : 1500;
+                    const avatar = userDoc ? userDoc.avatar : null;
 
+                    room.players.push({ socketId: socket.id, userId, username, color, isOnline: true, elo, avatar });
                     socket.emit('playerJoined', {
                         color,
                         fen: room.chess.fen(),
                         pgn: room.chess.pgn(),
-                        players: room.players
+                        players: room.players.map(p => ({ ...p, disconnectTimeout: undefined }))
                     });
+                    gameNamespace.to(roomId).emit('roomUpdate', { players: room.players.map(p => ({ ...p, disconnectTimeout: undefined })), spectators: room.spectators.length });
 
-                    gameNamespace.to(roomId).emit('roomUpdate', {
-                        players: room.players,
-                        spectators: room.spectators.length
-                    });
+                    // Start timer if game is ready (2 players)
+                    if (room.players.length === 2) {
+                        const turn = room.chess.turn() === 'w' ? 'white' : 'black';
+                        startMoveTimer(roomId, turn, gameNamespace);
+                    }
                 } else {
-                    // Join as spectator
                     room.spectators.push({ socketId: socket.id, userId, username });
-                    socket.emit('spectatorJoined', {
-                        fen: room.chess.fen(),
-                        pgn: room.chess.pgn(),
-                        players: room.players,
-                        history: room.chess.history({ verbose: true })
-                    });
+                    socket.emit('spectatorJoined', { fen: room.chess.fen(), pgn: room.chess.pgn(), players: room.players.map(p => ({ ...p, disconnectTimeout: undefined })), history: room.chess.history({ verbose: true }) });
                 }
-            } catch (error) {
-                console.error('Error in joinRoom:', error);
-            }
+            } catch (error) { console.error('Error in joinRoom:', error); }
         });
 
-        // Make a move
+        // Make move
         socket.on('makeMove', ({ roomId, move }) => {
             const room = gameRooms.get(roomId);
-            if (!room) {
-                console.error(`❌ Move attempt for non-existent room: ${roomId}`);
-                return;
-            }
-
-            // SECURITY: Validate player identity
+            if (!room) return;
             const player = room.players.find(p => p.socketId === socket.id);
-            if (!player) {
-                socket.emit('invalidMove', { error: 'You are not a player in this game' });
-                console.warn(`WARNING: Non-player attempted move in ${roomId}`);
+            if (!player || player.color[0] !== room.chess.turn()) {
+                socket.emit('invalidMove', { error: 'Not your turn or invalid player' });
                 return;
             }
-
-            const currentTurn = room.chess.turn(); // 'w' or 'b'
-            if (player.color[0] !== currentTurn) {
-                socket.emit('invalidMove', {
-                    error: `Not your turn! It's ${currentTurn === 'w' ? "White" : "Black"}'s turn`
-                });
-                console.warn(`WARNING: ${player.username} (${player.color}) attempted to move on ${currentTurn === 'w' ? 'White' : 'Black'}'s turn`);
-                return;
-            }
-
-            console.log(`Move attempt in ${roomId}:`, move);
-            console.log(`   Current FEN: ${room.chess.fen()}`);
 
             try {
                 const result = room.chess.move(move);
@@ -164,18 +231,8 @@ export const initializeGameSocket = (io) => {
                     const fen = room.chess.fen();
                     const isGameOver = room.chess.isGameOver();
 
-                    // DEBUG: Log game state after every move
-                    console.log(`\nAfter move ${result.san}:`);
-                    console.log(`   FEN: ${fen}`);
-                    console.log(`   isGameOver: ${isGameOver}`);
-                    console.log(`   isCheckmate: ${room.chess.isCheckmate()}`);
-                    console.log(`   isStalemate: ${room.chess.isStalemate()}`);
-                    console.log(`   isDraw: ${room.chess.isDraw()}`);
-                    console.log(`   isCheck: ${room.chess.isCheck()}`);
-                    console.log(`   turn: ${room.chess.turn()}`);
-
                     let gameResult = null;
-                    let endReason = null; // Moved outside so it's accessible below
+                    let endReason = null;
 
                     if (isGameOver) {
                         if (room.chess.isCheckmate()) {
@@ -194,246 +251,119 @@ export const initializeGameSocket = (io) => {
                             gameResult = 'draw';
                             endReason = 'insufficient_material';
                         }
-
-                        console.log(`🏁 Game Over in ${roomId}. Result: ${gameResult}, Reason: ${endReason}`);
-
-                    } else {
-                        console.log(`Game continues`);
                     }
 
-                    // Send move update to ALL players with PERSONALIZED data
-                    if (isGameOver && gameResult && gameResult !== 'draw') {
-                        // Game over with a winner - send personalized data to each player
-                        room.players.forEach(player => {
-                            const isWinner = player.color === gameResult;
+                    // Emit move
+                    gameNamespace.to(roomId).emit('moveMade', {
+                        move: result,
+                        fen,
+                        pgn: room.chess.pgn(),
+                        isGameOver,
+                        result: gameResult,
+                        endReason
+                    });
 
-                            gameNamespace.to(player.socketId).emit('moveMade', {
-                                move: result,
-                                fen: fen,
-                                pgn: room.chess.pgn(),
-                                isGameOver,
-                                result: gameResult,
-                                endReason: endReason,
-                                isWinner: isWinner  // Personalized: true for winner, false for loser
-                            });
-
-                            console.log(`📤 Sent to ${player.username} (${player.color}): isWinner=${isWinner}`);
-                        });
-                    } else {
-                        // Normal move or draw - broadcast same data to everyone
-                        gameNamespace.to(roomId).emit('moveMade', {
-                            move: result,
-                            fen: fen,
-                            pgn: room.chess.pgn(),
-                            isGameOver,
-                            result: gameResult,
-                            endReason: endReason
-                        });
-                    }
-
-                    console.log(`Move successful: ${result.san}. New FEN: ${fen}`);
-
-                    // Save move to database (Persistence)
-                    // Save move to database (Persistence)
+                    // Save move
                     import('../models/Game.js').then(async ({ default: Game }) => {
                         try {
-                            const moveData = {
-                                from: result.from,
-                                to: result.to,
-                                piece: result.piece,
-                                captured: result.captured,
-                                promotion: result.promotion,
-                                san: result.san,
-                                timestamp: new Date()
-                            };
-
-                            const updateData = {
-                                $push: { moves: moveData },
-                                $set: {
-                                    fen: fen,
-                                    pgn: room.chess.pgn()
-                                }
-                            };
-
-                            // If game is over, update result and calculate ELO
-                            if (isGameOver) {
-                                updateData.$set.result = gameResult;
-                                updateData.$set.endReason = endReason;
-                                updateData.$set.completedAt = new Date();
-
-                                // Calculate and update ELO ratings
-                                if (gameResult && gameResult !== 'draw' || endReason === 'draw' || endReason === 'stalemate' || gameResult === 'draw') {
-                                    try {
-                                        const { default: User } = await import('../models/User.js');
-                                        const { calculateRatingChanges } = await import('../utils/eloCalculator.js');
-
-                                        // Fetch game to get player IDs
-                                        const gameDoc = await Game.findById(roomId);
-                                        if (gameDoc && gameDoc.white && gameDoc.black) {
-                                            const whitePlayer = await User.findById(gameDoc.white);
-                                            const blackPlayer = await User.findById(gameDoc.black);
-
-                                            if (whitePlayer && blackPlayer) {
-                                                const ratingChanges = calculateRatingChanges(
-                                                    whitePlayer.rating,
-                                                    blackPlayer.rating,
-                                                    gameResult
-                                                );
-
-                                                // Update White Player
-                                                await User.findByIdAndUpdate(whitePlayer._id, {
-                                                    rating: ratingChanges.whiteNewRating,
-                                                    $inc: {
-                                                        gamesPlayed: 1,
-                                                        wins: gameResult === 'white' ? 1 : 0,
-                                                        losses: gameResult === 'black' ? 1 : 0,
-                                                        draws: gameResult === 'draw' ? 1 : 0
-                                                    }
-                                                });
-
-                                                // Update Black Player
-                                                await User.findByIdAndUpdate(blackPlayer._id, {
-                                                    rating: ratingChanges.blackNewRating,
-                                                    $inc: {
-                                                        gamesPlayed: 1,
-                                                        wins: gameResult === 'black' ? 1 : 0,
-                                                        losses: gameResult === 'white' ? 1 : 0,
-                                                        draws: gameResult === 'draw' ? 1 : 0
-                                                    }
-                                                });
-
-                                                // Save rating snapshot to Game
-                                                updateData.$set.whiteRatingBefore = whitePlayer.rating;
-                                                updateData.$set.whiteRatingAfter = ratingChanges.whiteNewRating;
-                                                updateData.$set.whiteRatingChange = ratingChanges.whiteChange;
-                                                updateData.$set.blackRatingBefore = blackPlayer.rating;
-                                                updateData.$set.blackRatingAfter = ratingChanges.blackNewRating;
-                                                updateData.$set.blackRatingChange = ratingChanges.blackChange;
-
-                                                console.log(`Ratings updated: White ${whitePlayer.rating}->${ratingChanges.whiteNewRating}, Black ${blackPlayer.rating}->${ratingChanges.blackNewRating}`);
-
-                                                // Emit rating updates to players
-                                                room.players.forEach(p => {
-                                                    if (p.color === 'white') {
-                                                        gameNamespace.to(p.socketId).emit('ratingUpdate', {
-                                                            oldRating: whitePlayer.rating,
-                                                            newRating: ratingChanges.whiteNewRating,
-                                                            change: ratingChanges.whiteChange
-                                                        });
-                                                    } else if (p.color === 'black') {
-                                                        gameNamespace.to(p.socketId).emit('ratingUpdate', {
-                                                            oldRating: blackPlayer.rating,
-                                                            newRating: ratingChanges.blackNewRating,
-                                                            change: ratingChanges.blackChange
-                                                        });
-                                                    }
-                                                });
-                                            }
-                                        }
-                                    } catch (eloError) {
-                                        console.error('❌ Error calculating/updating ELO:', eloError);
-                                    }
-                                }
-                            }
-
-                            await Game.findByIdAndUpdate(roomId, updateData);
-                            console.log(`💾 Move ${result.san} saved to DB for game ${roomId}`);
-                        } catch (err) {
-                            console.error('❌ Failed to save move to DB:', err);
-                        }
+                            await Game.findByIdAndUpdate(roomId, {
+                                $push: { moves: { ...result, san: result.san, timestamp: new Date() } },
+                                $set: { fen, pgn: room.chess.pgn() }
+                            });
+                        } catch (e) { console.error('Save move failed', e); }
                     });
-                } else {
-                    console.warn(`WARNING: Move failed (logic):`, move);
+
+                    // Handle End
+                    if (isGameOver) {
+                        handleGameEnd(roomId, gameResult, endReason, gameNamespace);
+                    } else {
+                        // Start timer for next player
+                        const nextTurn = room.chess.turn() === 'w' ? 'white' : 'black';
+                        startMoveTimer(roomId, nextTurn, gameNamespace);
+                    }
                 }
-            } catch (error) {
-                console.error(`❌ Invalid move error:`, error.message);
-                socket.emit('invalidMove', { error: 'Invalid move: ' + error.message });
-                // Resync client
-                socket.emit('playerJoined', {
-                    color: room.players.find(p => p.socketId === socket.id)?.color || 'white',
-                    fen: room.chess.fen(),
-                    players: room.players
-                });
-            }
+            } catch (e) { console.error(e); }
         });
 
-        // Chat message
         socket.on('chatMessage', ({ roomId, message, username }) => {
-            gameNamespace.to(roomId).emit('chatMessage', {
-                username,
-                message,
-                timestamp: new Date()
-            });
+            gameNamespace.to(roomId).emit('chatMessage', { username, message, timestamp: new Date() });
         });
 
-        // Offer draw
         socket.on('offerDraw', ({ roomId, username }) => {
             socket.to(roomId).emit('drawOffered', { username });
         });
 
-        // Accept draw
         socket.on('acceptDraw', ({ roomId }) => {
-            gameNamespace.to(roomId).emit('gameEnded', {
-                result: 'draw',
-                reason: 'draw_agreement'
-            });
+            handleGameEnd(roomId, 'draw', 'draw_agreement', gameNamespace);
         });
 
-        // Resign
+        socket.on('declineDraw', ({ roomId, username }) => {
+            socket.to(roomId).emit('drawDeclined', { username });
+        });
+
         socket.on('resign', ({ roomId, userId }) => {
+            console.log(`🏳️ Resign requested in ${roomId} by ${userId}`);
             const room = gameRooms.get(roomId);
-            if (!room) return;
+            if (!room) {
+                console.error(`❌ Resign failed: Room ${roomId} not found`);
+                return;
+            }
 
             const player = room.players.find(p => p.userId === userId);
             if (player) {
+                if (!['white', 'black'].includes(player.color)) {
+                    console.error(`❌ Resign failed: Invalid player color ${player.color}`);
+                    return;
+                }
                 const winner = player.color === 'white' ? 'black' : 'white';
-                gameNamespace.to(roomId).emit('gameEnded', {
-                    result: winner,
-                    reason: 'resignation'
-                });
+                console.log(`🏳️ Resign processed for ${player.username} (${player.color}). Winner: ${winner}`);
+                handleGameEnd(roomId, winner, 'resignation', gameNamespace);
+            } else {
+                console.error(`❌ Resign failed: Player ${userId} not found in room`);
             }
         });
 
-        // Leave room
         socket.on('leaveRoom', ({ roomId, userId }) => {
             socket.leave(roomId);
             const room = gameRooms.get(roomId);
-
             if (room) {
+                const player = room.players.find(p => p.userId === userId);
+                if (player && player.disconnectTimeout) clearTimeout(player.disconnectTimeout);
+
                 room.players = room.players.filter(p => p.userId !== userId);
                 room.spectators = room.spectators.filter(s => s.userId !== userId);
 
-                if (room.players.length === 0 && room.spectators.length === 0) {
-                    gameRooms.delete(roomId);
-                } else {
-                    gameNamespace.to(roomId).emit('roomUpdate', {
-                        players: room.players,
-                        spectators: room.spectators.length
-                    });
-                }
+                if (room.players.length === 0 && room.spectators.length === 0) gameRooms.delete(roomId);
+                else gameNamespace.to(roomId).emit('roomUpdate', { players: room.players.map(p => ({ ...p, disconnectTimeout: undefined })), spectators: room.spectators.length });
             }
         });
 
-        // Disconnect
         socket.on('disconnect', () => {
-            console.log(`Game socket disconnected: ${socket.id}`);
-
-            // Remove from all rooms
             gameRooms.forEach((room, roomId) => {
-                const wasPlayer = room.players.find(p => p.socketId === socket.id);
-                room.players = room.players.filter(p => p.socketId !== socket.id);
-                room.spectators = room.spectators.filter(s => s.socketId !== socket.id);
-
-                if (room.players.length === 0 && room.spectators.length === 0) {
-                    gameRooms.delete(roomId);
-                } else if (wasPlayer) {
+                const player = room.players.find(p => p.socketId === socket.id);
+                if (player) {
+                    player.isOnline = false;
                     gameNamespace.to(roomId).emit('playerDisconnected', {
-                        message: 'Opponent disconnected'
+                        username: player.username,
+                        message: `Player ${player.username} disconnected. Waiting 30s...`,
+                        timeout: 30000
                     });
+
+                    player.disconnectTimeout = setTimeout(() => {
+                        if (gameRooms.has(roomId) && !player.isOnline) {
+                            const winner = player.color === 'white' ? 'black' : 'white';
+                            handleGameEnd(roomId, winner, 'abandonment', gameNamespace);
+                            // Keep room in memory? Or delete logic inside handleGameEnd?
+                            // For abandonment, usually strictly over.
+                            gameRooms.delete(roomId);
+                        }
+                    }, 30000);
+                } else {
+                    room.spectators = room.spectators.filter(s => s.socketId !== socket.id);
                 }
             });
         });
-    });
 
-    console.log('Game socket handlers initialized');
+    });
+    console.log('Game socket handlers initialized (Refactored)');
 };
