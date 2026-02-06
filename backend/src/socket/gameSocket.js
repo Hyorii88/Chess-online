@@ -19,7 +19,7 @@ function startMoveTimer(roomId, turnColor, gameNamespace) {
                 handleGameEnd(roomId, winnerColor, 'timeout', gameNamespace);
             }
         }
-    }, 10000);
+    }, 600000); // 10 minutes move timer
 }
 
 // Helper to handle game end (DB + ELO + Room Cleanup)
@@ -175,10 +175,13 @@ export const initializeGameSocket = (io) => {
 
                 if (existingPlayer) {
                     if (existingPlayer.disconnectTimeout) {
-                        clearTimeout(existingPlayer.disconnectTimeout); existingPlayer.disconnectTimeout = null;
+                        console.log(`[DEBUG] Clearing disconnect timeout for ${existingPlayer.username} (socket: ${socket.id})`);
+                        clearTimeout(existingPlayer.disconnectTimeout);
+                        existingPlayer.disconnectTimeout = null;
                     }
                     existingPlayer.socketId = socket.id;
                     existingPlayer.isOnline = true;
+                    console.log(`[DEBUG] Player ${existingPlayer.username} reconnected to room ${roomId}`);
                     socket.emit('playerJoined', { color: existingPlayer.color, fen: room.chess.fen(), pgn: room.chess.pgn(), players: room.players.map(p => ({ ...p, disconnectTimeout: undefined })) });
                     gameNamespace.to(roomId).emit('playerReconnected', { username: existingPlayer.username, players: room.players.map(p => ({ ...p, disconnectTimeout: undefined })) });
                 } else if (room.players.length < 2) {
@@ -343,21 +346,24 @@ export const initializeGameSocket = (io) => {
                 const player = room.players.find(p => p.socketId === socket.id);
                 if (player) {
                     player.isOnline = false;
+                    console.log(`[DEBUG] Player ${player.username} disconnected from room ${roomId}. Starting 10s timer.`);
                     gameNamespace.to(roomId).emit('playerDisconnected', {
                         username: player.username,
-                        message: `Player ${player.username} disconnected. Waiting 30s...`,
-                        timeout: 30000
+                        message: `Player ${player.username} disconnected. Waiting 10s...`,
+                        timeout: 10000
                     });
 
                     player.disconnectTimeout = setTimeout(() => {
+                        console.log(`[DEBUG] Disconnect timeout reached for ${player.username} in room ${roomId}. isOnline: ${player.isOnline}`);
                         if (gameRooms.has(roomId) && !player.isOnline) {
                             const winner = player.color === 'white' ? 'black' : 'white';
+                            console.log(`[DEBUG] Abandoning game ${roomId}. Winner: ${winner}`);
                             handleGameEnd(roomId, winner, 'abandonment', gameNamespace);
                             // Keep room in memory? Or delete logic inside handleGameEnd?
                             // For abandonment, usually strictly over.
                             gameRooms.delete(roomId);
                         }
-                    }, 30000);
+                    }, 10000);
                 } else {
                     room.spectators = room.spectators.filter(s => s.socketId !== socket.id);
                 }
